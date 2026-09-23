@@ -12,7 +12,7 @@ from app.config import Settings
 from app.ingestion.models import Source
 from app.retrieval.cli import main
 from app.retrieval.corpus import RetrievalError, load_corpus
-from app.retrieval.index import build_index, search
+from app.retrieval.index import RetrievalSession, build_index, search
 
 
 def digest(text: str) -> str:
@@ -20,12 +20,22 @@ def digest(text: str) -> str:
 
 
 HTML = Source(
-    id="faq", title="Вопросы", url="https://unecon.ru/faq/", source_type="html",
-    category="faq", admission_year=2026, active=True,
+    id="faq",
+    title="Вопросы",
+    url="https://unecon.ru/faq/",
+    source_type="html",
+    category="faq",
+    admission_year=2026,
+    active=True,
 )
 PDF = Source(
-    id="rules", title="Правила", url="https://unecon.ru/rules.pdf", source_type="pdf",
-    category="rules", admission_year=2026, active=True,
+    id="rules",
+    title="Правила",
+    url="https://unecon.ru/rules.pdf",
+    source_type="pdf",
+    category="rules",
+    admission_year=2026,
+    active=True,
 )
 
 
@@ -33,11 +43,13 @@ def normalized(source: Source, pages: list[str]) -> dict:
     text = pages[0] if source.source_type == "html" else "\n\n\f\n\n".join(p for p in pages if p)
     document = {"title": source.title, "text": text, "content_sha256": digest(text)}
     if source.source_type == "pdf":
-        document.update({
-            "page_count": len(pages),
-            "pages": [{"page_number": i, "text": p} for i, p in enumerate(pages, 1)],
-            "file_sha256": digest("pdf bytes"),
-        })
+        document.update(
+            {
+                "page_count": len(pages),
+                "pages": [{"page_number": i, "text": p} for i, p in enumerate(pages, 1)],
+                "file_sha256": digest("pdf bytes"),
+            }
+        )
     return {
         "schema_version": 1,
         "source": {**source.model_dump(exclude={"active"}), "final_url": source.url},
@@ -50,9 +62,10 @@ def corpus(tmp_path: Path):
     manifest = tmp_path / "manifest.json"
     chunks_dir = tmp_path / "chunks"
     chunks_dir.mkdir()
-    manifest.write_text(json.dumps({
-        "schema_version": 1, "sources": [HTML.model_dump(), PDF.model_dump()]
-    }), encoding="utf-8")
+    manifest.write_text(
+        json.dumps({"schema_version": 1, "sources": [HTML.model_dump(), PDF.model_dump()]}),
+        encoding="utf-8",
+    )
     artifacts = {
         "faq": build_chunk_artifact(HTML, normalized(HTML, ["Ответ про поступление."])),
         "rules": build_chunk_artifact(PDF, normalized(PDF, ["", "Правила приема.", "Стоимость."])),
@@ -89,7 +102,12 @@ def build(corpus, embedder=None):
 def query(corpus, embedder=None, text="правила", top_k=5):
     manifest, chunks_dir, index_dir, _ = corpus
     return search(
-        text, top_k, manifest, chunks_dir, index_dir, "fake",
+        text,
+        top_k,
+        manifest,
+        chunks_dir,
+        index_dir,
+        "fake",
         embedder_factory=lambda: embedder or FakeEmbedder(),
     )
 
@@ -102,23 +120,27 @@ def test_build_search_provenance_and_rebuild(corpus):
     metadata = build(corpus)
     assert metadata["embedding"] == {"model": "fake", "dimension": 3, "normalized": True}
     assert metadata["index"]["vector_count"] == 3
-    assert metadata["index"]["file_sha256"] == hashlib.sha256(
-        (corpus[2] / "index.faiss").read_bytes()
-    ).hexdigest()
+    assert (
+        metadata["index"]["file_sha256"]
+        == hashlib.sha256((corpus[2] / "index.faiss").read_bytes()).hexdigest()
+    )
     assert query(corpus)[0]["source_id"] == "rules"
     assert query(corpus)[0]["page_start"] == 2
     assert len(query(corpus, top_k=10)) == 3
     assert build(corpus)["records"] == metadata["records"]
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda a: a["chunks"][0].update(text="tampered"),
-    lambda a: a["chunks"][0].update(chunk_id="bad"),
-    lambda a: a["chunks"][0].update(content_sha256="0" * 64),
-    lambda a: a["source"].update(url="https://example.com/"),
-    lambda a: a["source"].update(content_sha256="0" * 64),
-    lambda a: a["chunks"][0].update(page_start=1),
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda a: a["chunks"][0].update(text="tampered"),
+        lambda a: a["chunks"][0].update(chunk_id="bad"),
+        lambda a: a["chunks"][0].update(content_sha256="0" * 64),
+        lambda a: a["source"].update(url="https://example.com/"),
+        lambda a: a["source"].update(content_sha256="0" * 64),
+        lambda a: a["chunks"][0].update(page_start=1),
+    ],
+)
 def test_invalid_chunks_fail_before_model(corpus, mutation):
     artifact = copy.deepcopy(corpus[3]["rules"])
     mutation(artifact)
@@ -143,15 +165,18 @@ def test_missing_and_manifest_mismatch_fail_before_model(corpus):
         build(corpus)
 
 
-@pytest.mark.parametrize("vectors", [
-    np.array([1, 0, 0], dtype=np.float32),
-    np.ones((2, 3), dtype=np.float32),
-    np.zeros((3, 3), dtype=np.float32),
-    np.array([[np.nan, 0, 0], [0, 1, 0], [0, 0, 1]]),
-    np.array([[np.inf, 0, 0], [0, 1, 0], [0, 0, 1]]),
-    np.ones((3, 3), dtype=np.float32),
-    np.empty((3, 0), dtype=np.float32),
-])
+@pytest.mark.parametrize(
+    "vectors",
+    [
+        np.array([1, 0, 0], dtype=np.float32),
+        np.ones((2, 3), dtype=np.float32),
+        np.zeros((3, 3), dtype=np.float32),
+        np.array([[np.nan, 0, 0], [0, 1, 0], [0, 0, 1]]),
+        np.array([[np.inf, 0, 0], [0, 1, 0], [0, 0, 1]]),
+        np.ones((3, 3), dtype=np.float32),
+        np.empty((3, 0), dtype=np.float32),
+    ],
+)
 def test_bad_document_vectors_rejected(corpus, vectors):
     with pytest.raises(RetrievalError):
         build(corpus, FakeEmbedder(vectors))
@@ -237,29 +262,44 @@ def test_failed_metadata_publish_leaves_detectable_pair(corpus, monkeypatch):
         query(corpus)
 
 
-@pytest.mark.parametrize("values", [
-    {"EMBEDDING_MODEL": " "},
-    {"EMBEDDING_DEVICE": "other"},
-    {"EMBEDDING_BATCH_SIZE": 0},
-    {"EMBEDDING_BATCH_SIZE": 129},
-])
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"EMBEDDING_MODEL": " "},
+        {"EMBEDDING_DEVICE": "other"},
+        {"EMBEDDING_BATCH_SIZE": 0},
+        {"EMBEDDING_BATCH_SIZE": 129},
+    ],
+)
 def test_invalid_embedding_settings(values):
     with pytest.raises(ValueError):
         Settings(_env_file=None, **values)
 
 
 def test_cli_build_and_search_output(corpus, monkeypatch, capsys):
-    monkeypatch.setattr("app.retrieval.cli.build_index", lambda *args: {
-        "index": {"vector_count": 3},
-        "embedding": {"dimension": 3},
-        "corpus": {"sources": [{}, {}]},
-    })
+    monkeypatch.setattr(
+        "app.retrieval.cli.build_index",
+        lambda *args: {
+            "index": {"vector_count": 3},
+            "embedding": {"dimension": 3},
+            "corpus": {"sources": [{}, {}]},
+        },
+    )
     assert main(["build-index"]) == 0
     assert "vectors=3 dimension=3 sources=2" in capsys.readouterr().out
-    monkeypatch.setattr("app.retrieval.cli.search", lambda *args: [{
-        "chunk_id": "faq:0001:abc", "score": 0.5, "page_start": None,
-        "source_id": "faq", "final_url": "https://unecon.ru/faq/", "text": "Текст ответа",
-    }])
+    monkeypatch.setattr(
+        "app.retrieval.cli.search",
+        lambda *args: [
+            {
+                "chunk_id": "faq:0001:abc",
+                "score": 0.5,
+                "page_start": None,
+                "source_id": "faq",
+                "final_url": "https://unecon.ru/faq/",
+                "text": "Текст ответа",
+            }
+        ],
+    )
     assert main(["search", "вопрос", "--top-k", "5"]) == 0
     assert "score=0.500000 page=- source=faq" in capsys.readouterr().out
     with pytest.raises(SystemExit):
@@ -274,3 +314,47 @@ def test_metadata_rejects_boolean_page_number(corpus):
     path.write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(RetrievalError, match="invalid vector records"):
         query(corpus)
+
+
+def test_retrieval_session_reuses_embedder_and_matches_one_shot(corpus):
+    build(corpus)
+    constructed = []
+
+    def factory():
+        embedder = FakeEmbedder()
+        constructed.append(embedder)
+        return embedder
+
+    session = RetrievalSession(corpus[0], corpus[1], corpus[2], "fake", embedder_factory=factory)
+    first = session.search("правила", 5)
+    second = session.search("правила", 5)
+    one_shot = query(corpus)
+    assert len(constructed) == 1
+    assert constructed[0].query_calls == 2
+    assert first == second == one_shot
+    assert [(hit["vector_id"], hit["chunk_id"], hit["score"]) for hit in first] == [
+        (hit["vector_id"], hit["chunk_id"], hit["score"]) for hit in one_shot
+    ]
+
+
+@pytest.mark.parametrize("damage", ["stale", "corrupt", "model"])
+def test_session_rejects_before_embedder_initialization(corpus, damage):
+    build(corpus)
+    model_name = "fake"
+    if damage == "stale":
+        artifact = build_chunk_artifact(HTML, normalized(HTML, ["Измененный ответ."]))
+        (corpus[1] / "faq.json").write_text(json.dumps(artifact), encoding="utf-8")
+    elif damage == "corrupt":
+        (corpus[2] / "index.faiss").write_bytes(b"invalid")
+    else:
+        model_name = "different"
+    constructed = []
+    with pytest.raises(RetrievalError):
+        RetrievalSession(
+            corpus[0],
+            corpus[1],
+            corpus[2],
+            model_name,
+            embedder_factory=lambda: constructed.append(FakeEmbedder()),
+        )
+    assert constructed == []

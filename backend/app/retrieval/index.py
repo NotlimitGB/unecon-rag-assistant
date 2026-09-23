@@ -229,6 +229,53 @@ def _validated_index(
         raise RetrievalError(f"invalid local index: {exc}") from exc
 
 
+class RetrievalSession:
+    """Reuse a validated index and one embedder across multiple queries."""
+
+    def __init__(
+        self,
+        manifest_path: Path,
+        chunks_dir: Path,
+        index_dir: Path,
+        model_name: str,
+        device: str = "auto",
+        batch_size: int = 16,
+        embedder_factory: Callable[[], DenseEmbedder] | None = None,
+    ):
+        if (
+            not model_name.strip()
+            or device not in {"auto", "cpu", "cuda"}
+            or not 1 <= batch_size <= 128
+        ):
+            raise RetrievalError("invalid embedding configuration")
+        self.index, self.metadata = _validated_index(index_dir, model_name)
+        fingerprints, self.records = load_corpus(manifest_path, chunks_dir)
+        if self.metadata["corpus"]["sources"] != fingerprints:
+            raise RetrievalError("index is stale relative to the source corpus")
+        if self.metadata["records"] != self.records:
+            raise RetrievalError("index records are stale relative to the chunks")
+        self.embedder = (embedder_factory or _default_factory(model_name, device, batch_size))()
+
+    def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
+        if not isinstance(query, str) or not query.strip():
+            raise RetrievalError("query must not be empty")
+        if type(top_k) is not int or top_k < 1:
+            raise RetrievalError("top_k must be a positive integer")
+        raw_query = np.asarray(self.embedder.encode_query(query))
+        if raw_query.ndim != 1:
+            raise RetrievalError("query embedding must be a one-dimensional vector")
+        query_vector = _vectors(raw_query.reshape(1, -1), 1, self.index.d)
+        scores, ids = self.index.search(query_vector, self.index.ntotal)
+        ranked = sorted(
+            zip(scores[0].tolist(), ids[0].tolist(), strict=True),
+            key=lambda pair: (-pair[0], pair[1]),
+        )
+        return [
+            {**self.records[vector_id], "score": float(score)}
+            for score, vector_id in ranked[:top_k]
+        ]
+
+
 def search(
     query: str,
     top_k: int,
@@ -244,25 +291,7 @@ def search(
         raise RetrievalError("query must not be empty")
     if type(top_k) is not int or top_k < 1:
         raise RetrievalError("top_k must be a positive integer")
-    if (
-        not model_name.strip()
-        or device not in {"auto", "cpu", "cuda"}
-        or not 1 <= batch_size <= 128
-    ):
-        raise RetrievalError("invalid embedding configuration")
-    index, metadata = _validated_index(index_dir, model_name)
-    fingerprints, records = load_corpus(manifest_path, chunks_dir)
-    if metadata["corpus"]["sources"] != fingerprints:
-        raise RetrievalError("index is stale relative to the source corpus")
-    if metadata["records"] != records:
-        raise RetrievalError("index records are stale relative to the chunks")
-    embedder = (embedder_factory or _default_factory(model_name, device, batch_size))()
-    raw_query = np.asarray(embedder.encode_query(query))
-    if raw_query.ndim != 1:
-        raise RetrievalError("query embedding must be a one-dimensional vector")
-    query_vector = _vectors(raw_query.reshape(1, -1), 1, index.d)
-    scores, ids = index.search(query_vector, index.ntotal)
-    ranked = sorted(
-        zip(scores[0].tolist(), ids[0].tolist(), strict=True), key=lambda pair: (-pair[0], pair[1])
+    session = RetrievalSession(
+        manifest_path, chunks_dir, index_dir, model_name, device, batch_size, embedder_factory
     )
-    return [{**records[vector_id], "score": float(score)} for score, vector_id in ranked[:top_k]]
+    return session.search(query, top_k)

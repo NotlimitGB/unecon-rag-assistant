@@ -1,0 +1,1085 @@
+{
+  "schema_version": 1,
+  "dataset_id": "unecon-retrieval-2026-v1",
+  "admission_year": 2026,
+  "questions": [
+    {
+      "question_id": "ret-001",
+      "question": "Когда в 2026 году начинается прием документов на бакалавриат?",
+      "category": "admission_deadlines",
+      "difficulty": "easy",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Прием заявлений начинается 20 июня."
+    },
+    {
+      "question_id": "ret-002",
+      "question": "До какого дня принимают документы на бюджет со вступительными испытаниями?",
+      "category": "admission_deadlines",
+      "difficulty": "easy",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Для поступающих со вступительными испытаниями указан июльский срок."
+    },
+    {
+      "question_id": "ret-003",
+      "question": "Когда завершается прием документов на бюджет без внутренних экзаменов?",
+      "category": "admission_deadlines",
+      "difficulty": "easy",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Для поступающих без внутренних испытаний установлен срок 25 июля."
+    },
+    {
+      "question_id": "ret-004",
+      "question": "До какой даты университет закончит собственные вступительные испытания на бюджет?",
+      "category": "admission_deadlines",
+      "difficulty": "medium",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "В календаре указан день завершения университетских испытаний."
+    },
+    {
+      "question_id": "ret-005",
+      "question": "Когда опубликуют конкурсные списки на бюджетные места?",
+      "category": "admission_deadlines",
+      "difficulty": "medium",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Календарь указывает дату публикации конкурсных списков."
+    },
+    {
+      "question_id": "ret-006",
+      "question": "До какого числа нужно дать согласие на зачисление в приоритетном этапе?",
+      "category": "admission_deadlines",
+      "difficulty": "medium",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Для приоритетного этапа указано завершение приема согласий."
+    },
+    {
+      "question_id": "ret-007",
+      "question": "Когда выйдут приказы о зачислении по квотам в приоритетном этапе?",
+      "category": "admission_deadlines",
+      "difficulty": "medium",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Приказы приоритетного этапа датированы 3 августа."
+    },
+    {
+      "question_id": "ret-008",
+      "question": "В какой день и час заканчивается прием согласий для основного этапа бюджета?",
+      "category": "admission_deadlines",
+      "difficulty": "hard",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Основной этап имеет отдельный срок с указанием московского времени."
+    },
+    {
+      "question_id": "ret-009",
+      "question": "Когда издадут приказ о зачислении на основные конкурсные места?",
+      "category": "admission_deadlines",
+      "difficulty": "hard",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Дата приказа основного этапа указана в графике зачисления."
+    },
+    {
+      "question_id": "ret-010",
+      "question": "До какого числа нужно заключить договор при поступлении на платное место?",
+      "category": "admission_deadlines",
+      "difficulty": "hard",
+      "primary_source_id": "admission-deadlines-pdf",
+      "acceptable_source_ids": [
+        "admission-deadlines-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Для договорного приема назван срок завершения заключения договоров."
+    },
+    {
+      "question_id": "ret-011",
+      "question": "Сколько бюджетных мест всего выделено на направление Экономика?",
+      "category": "admission_capacity",
+      "difficulty": "easy",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Строка 38.03.01 содержит общее число бюджетных мест."
+    },
+    {
+      "question_id": "ret-012",
+      "question": "Сколько мест за счет бюджета на Прикладной математике и информатике?",
+      "category": "admission_capacity",
+      "difficulty": "easy",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Общее число бюджетных мест приведено в строке 01.03.02."
+    },
+    {
+      "question_id": "ret-013",
+      "question": "Сколько платных мест всего у направления Менеджмент?",
+      "category": "admission_capacity",
+      "difficulty": "easy",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Строка 38.03.02 содержит общее число платных мест."
+    },
+    {
+      "question_id": "ret-014",
+      "question": "Есть ли бюджетные места на Информационной безопасности в 2026/27 году?",
+      "category": "admission_capacity",
+      "difficulty": "medium",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Строка 10.03.01 показывает ноль бюджетных мест."
+    },
+    {
+      "question_id": "ret-015",
+      "question": "Какой набор мест на Информационные системы и технологии?",
+      "category": "admission_capacity",
+      "difficulty": "medium",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Строка 09.03.02 разделяет бюджетные и платные места."
+    },
+    {
+      "question_id": "ret-016",
+      "question": "Сколько бюджетных и платных мест на Бизнес-информатике?",
+      "category": "admission_capacity",
+      "difficulty": "medium",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Строка 38.03.05 приводит оба числа для направления."
+    },
+    {
+      "question_id": "ret-017",
+      "question": "Предусмотрены ли бюджетные места на Лингвистике?",
+      "category": "admission_capacity",
+      "difficulty": "medium",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "Строка 45.03.02 указывает ноль бюджетных мест."
+    },
+    {
+      "question_id": "ret-018",
+      "question": "Сколько мест для иностранцев выделено отдельно по Торговому делу?",
+      "category": "admission_capacity",
+      "difficulty": "hard",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "В строке 38.03.06 указаны места отдельного платного конкурса."
+    },
+    {
+      "question_id": "ret-019",
+      "question": "Сколько мест по заочной форме у Гостиничного дела?",
+      "category": "admission_capacity",
+      "difficulty": "hard",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "Для заочной формы гостиничного дела приведены бюджетные и платные места."
+    },
+    {
+      "question_id": "ret-020",
+      "question": "Каково общее количество бюджетных мест по всему перечню бакалавриата и специалитета?",
+      "category": "admission_capacity",
+      "difficulty": "hard",
+      "primary_source_id": "admission-capacity-pdf",
+      "acceptable_source_ids": [
+        "admission-capacity-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "Итоговая строка таблицы содержит общую сумму бюджетных мест."
+    },
+    {
+      "question_id": "ret-021",
+      "question": "Во сколько вузов одновременно можно подать документы на бакалавриат?",
+      "category": "admission_rules",
+      "difficulty": "easy",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "Правила ограничивают число организаций пятью."
+    },
+    {
+      "question_id": "ret-022",
+      "question": "Сколько направлений можно выбрать для конкурса в СПбГЭУ?",
+      "category": "admission_rules",
+      "difficulty": "easy",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf",
+        "admissions-faq"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "В университете допускается до пяти направлений или специальностей."
+    },
+    {
+      "question_id": "ret-023",
+      "question": "Из каких баллов складывается конкурсная сумма поступающего?",
+      "category": "admission_rules",
+      "difficulty": "easy",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        7
+      ],
+      "evidence_note": "Конкурсная сумма включает испытания и индивидуальные достижения."
+    },
+    {
+      "question_id": "ret-024",
+      "question": "Какие квоты выделяются при приеме на бюджет?",
+      "category": "admission_rules",
+      "difficulty": "easy",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "evidence_note": "Правила перечисляют отдельную, особую и целевую квоты."
+    },
+    {
+      "question_id": "ret-025",
+      "question": "Будет ли дополнительный прием, если после зачисления останутся места?",
+      "category": "admission_rules",
+      "difficulty": "easy",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "Дополнительный прием предусмотрен при незаполненных местах."
+    },
+    {
+      "question_id": "ret-026",
+      "question": "В какой последовательности университет выделяет квоты из бюджетных мест?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "evidence_note": "Сначала выделяется отдельная, затем особая и целевая квота."
+    },
+    {
+      "question_id": "ret-027",
+      "question": "Можно ли участвовать в нескольких конкурсных группах внутри одного направления?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "Правила допускают участие в разных конкурсных группах направления."
+    },
+    {
+      "question_id": "ret-028",
+      "question": "Что делать, если пропустил внутренний экзамен по подтвержденной болезни?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        12
+      ],
+      "evidence_note": "При уважительной документально подтвержденной причине предусмотрен резервный день."
+    },
+    {
+      "question_id": "ret-029",
+      "question": "Когда университет публикует результаты внутреннего испытания?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        12
+      ],
+      "evidence_note": "Результаты объявляют в течение трех рабочих дней с дополнительным ограничением перед списками."
+    },
+    {
+      "question_id": "ret-030",
+      "question": "Сколько баллов дают за аттестат или диплом с отличием?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        13
+      ],
+      "evidence_note": "В разделе достижений документы с отличием оцениваются в десять баллов."
+    },
+    {
+      "question_id": "ret-031",
+      "question": "Кто может претендовать на прием без вступительных испытаний?",
+      "category": "admission_rules",
+      "difficulty": "medium",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        17
+      ],
+      "evidence_note": "Особые права описывают победителей олимпиад и другие установленные категории."
+    },
+    {
+      "question_id": "ret-032",
+      "question": "Какую минимальную долю бюджетных мест составляет отдельная квота?",
+      "category": "admission_rules",
+      "difficulty": "hard",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "evidence_note": "Отдельная квота устанавливается не менее десяти процентов."
+    },
+    {
+      "question_id": "ret-033",
+      "question": "Сколько дополнительных баллов дают за целевые индивидуальные достижения?",
+      "category": "admission_rules",
+      "difficulty": "hard",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        13
+      ],
+      "evidence_note": "Целевые достижения оцениваются в пять баллов."
+    },
+    {
+      "question_id": "ret-034",
+      "question": "Сколько баллов может принести спортивный разряд кандидата в мастера спорта?",
+      "category": "admission_rules",
+      "difficulty": "hard",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        14
+      ],
+      "evidence_note": "В перечне достижений кандидат в мастера спорта дает восемь баллов."
+    },
+    {
+      "question_id": "ret-035",
+      "question": "Можно ли использовать право поступления без экзаменов сразу в двух вузах?",
+      "category": "admission_rules",
+      "difficulty": "hard",
+      "primary_source_id": "admission-rules-pdf",
+      "acceptable_source_ids": [
+        "admission-rules-pdf"
+      ],
+      "expected_pages": [
+        18
+      ],
+      "evidence_note": "Единое особое право используется для одной организации и одной программы."
+    },
+    {
+      "question_id": "ret-036",
+      "question": "Какой максимальный балл за каждое вступительное испытание?",
+      "category": "entrance_exams",
+      "difficulty": "easy",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        1
+      ],
+      "evidence_note": "Перечень устанавливает максимум в сто баллов."
+    },
+    {
+      "question_id": "ret-037",
+      "question": "Какой экзамен стоит первым для поступления на Экономику?",
+      "category": "entrance_exams",
+      "difficulty": "easy",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Для 38.03.01 первым обязательным предметом указана математика."
+    },
+    {
+      "question_id": "ret-038",
+      "question": "Какой первый экзамен нужен для Юриспруденции?",
+      "category": "entrance_exams",
+      "difficulty": "easy",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "В строке 40.03.01 первым предметом стоит обществознание."
+    },
+    {
+      "question_id": "ret-039",
+      "question": "Какой основной предмет требуется на Международные отношения?",
+      "category": "entrance_exams",
+      "difficulty": "easy",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "В перечне 41.03.05 первым указана история."
+    },
+    {
+      "question_id": "ret-040",
+      "question": "По какой шкале оценивают университетские вступительные экзамены?",
+      "category": "entrance_exams",
+      "difficulty": "easy",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Регламент устанавливает стобалльную шкалу."
+    },
+    {
+      "question_id": "ret-041",
+      "question": "Какой минимальный балл по математике нужен на бюджет по Экономике?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Строка 38.03.01 приводит бюджетный минимум математики."
+    },
+    {
+      "question_id": "ret-042",
+      "question": "Какие предметы можно выбрать третьим экзаменом для Экономики?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "После математики и русского в строке Экономики перечислены предметы по выбору."
+    },
+    {
+      "question_id": "ret-043",
+      "question": "На каком языке проходят вступительные испытания по перечню?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "Заключительные пункты перечня называют русский язык испытаний."
+    },
+    {
+      "question_id": "ret-044",
+      "question": "В каком формате проводят внутренние экзамены в 2026 году?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        8
+      ],
+      "evidence_note": "Перечень указывает компьютерное тестирование и дистанционный формат."
+    },
+    {
+      "question_id": "ret-045",
+      "question": "Нужен ли паспорт для допуска к вступительному испытанию?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Регламент требует документ, удостоверяющий личность."
+    },
+    {
+      "question_id": "ret-046",
+      "question": "Можно ли пересдать экзамен по одному предмету несколько раз?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Регламент допускает однократное прохождение по предмету."
+    },
+    {
+      "question_id": "ret-047",
+      "question": "Как подать заявление на резервный день после болезни?",
+      "category": "entrance_exams",
+      "difficulty": "medium",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Указаны личное заявление, электронный адрес и срок до испытания."
+    },
+    {
+      "question_id": "ret-048",
+      "question": "Какие испытания предусмотрены для иностранцев на отдельном платном конкурсе по Экономике?",
+      "category": "entrance_exams",
+      "difficulty": "hard",
+      "primary_source_id": "entrance-exams-list-pdf",
+      "acceptable_source_ids": [
+        "entrance-exams-list-pdf"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "evidence_note": "Отдельная таблица перечисляет математику и русский для иностранных граждан."
+    },
+    {
+      "question_id": "ret-049",
+      "question": "Разрешено ли проходить дистанционный экзамен с телефона или планшета?",
+      "category": "entrance_exams",
+      "difficulty": "hard",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "evidence_note": "Регламент прямо запрещает планшет и мобильный телефон."
+    },
+    {
+      "question_id": "ret-050",
+      "question": "Можно ли пользоваться черновиком на экзамене с прокторингом?",
+      "category": "entrance_exams",
+      "difficulty": "hard",
+      "primary_source_id": "entrance-exam-regulations-pdf",
+      "acceptable_source_ids": [
+        "entrance-exam-regulations-pdf"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "evidence_note": "Черновики разрешены, но не проверяются."
+    },
+    {
+      "question_id": "ret-051",
+      "question": "Где указана стоимость обучения на первый курс 2026/27 года?",
+      "category": "tuition",
+      "difficulty": "easy",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf",
+        "tuition"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Приказ № 128 содержит таблицу стоимости семестров первого курса."
+    },
+    {
+      "question_id": "ret-052",
+      "question": "Каким приказом установлена стоимость обучения на 2026/27 учебный год?",
+      "category": "tuition",
+      "difficulty": "easy",
+      "primary_source_id": "tuition",
+      "acceptable_source_ids": [
+        "tuition",
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Страница платного обучения ссылается на приказ № 128."
+    },
+    {
+      "question_id": "ret-053",
+      "question": "Как связаться с отделом по работе с договорами?",
+      "category": "tuition",
+      "difficulty": "easy",
+      "primary_source_id": "tuition",
+      "acceptable_source_ids": [
+        "tuition"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Страница платного обучения приводит телефон и электронную почту отдела."
+    },
+    {
+      "question_id": "ret-054",
+      "question": "Сколько стоит семестр первого курса бакалавриата по Экономике?",
+      "category": "tuition",
+      "difficulty": "medium",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Строка 38.03.01 показывает стоимость первого и второго семестров."
+    },
+    {
+      "question_id": "ret-055",
+      "question": "Какова цена первого семестра бакалавриата по Юриспруденции?",
+      "category": "tuition",
+      "difficulty": "medium",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "На странице 3 приведена строка 40.03.01 с семестровой оплатой."
+    },
+    {
+      "question_id": "ret-056",
+      "question": "Во сколько обойдется первый семестр Лингвистики с китайским языком?",
+      "category": "tuition",
+      "difficulty": "medium",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Строка китайского профиля лингвистики содержит цену первого семестра."
+    },
+    {
+      "question_id": "ret-057",
+      "question": "Можно ли найти на сайте сведения об оплате учебы материнским капиталом?",
+      "category": "tuition",
+      "difficulty": "medium",
+      "primary_source_id": "tuition",
+      "acceptable_source_ids": [
+        "tuition"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Раздел платного обучения содержит соответствующий пункт."
+    },
+    {
+      "question_id": "ret-058",
+      "question": "Где искать образец договора на платное обучение для иностранного гражданина?",
+      "category": "tuition",
+      "difficulty": "medium",
+      "primary_source_id": "tuition",
+      "acceptable_source_ids": [
+        "tuition"
+      ],
+      "expected_pages": null,
+      "evidence_note": "На странице платного обучения есть отдельный образец договора для иностранцев."
+    },
+    {
+      "question_id": "ret-059",
+      "question": "Сколько стоит первый семестр очной Экономики предприятия с китайским языком?",
+      "category": "tuition",
+      "difficulty": "hard",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "evidence_note": "Специальный профиль Экономики на странице 2 имеет отдельную цену."
+    },
+    {
+      "question_id": "ret-060",
+      "question": "Сколько стоит первый семестр англоязычного бизнес-администрирования?",
+      "category": "tuition",
+      "difficulty": "hard",
+      "primary_source_id": "tuition-order-128-pdf",
+      "acceptable_source_ids": [
+        "tuition-order-128-pdf"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "evidence_note": "Таблица на странице 3 выделяет англоязычную программу и ее стоимость."
+    },
+    {
+      "question_id": "ret-061",
+      "question": "Поможет ли поступить ранняя подача документов?",
+      "category": "faq",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ поясняет, что дата подачи в установленный период не влияет на поступление."
+    },
+    {
+      "question_id": "ret-062",
+      "question": "Можно ли перейти с платного обучения на бюджет?",
+      "category": "faq",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq",
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ перечисляет условия перехода при наличии свободных мест."
+    },
+    {
+      "question_id": "ret-063",
+      "question": "Есть ли подготовительные курсы для абитуриентов?",
+      "category": "faq",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ указывает подразделение, которое готовит поступающих."
+    },
+    {
+      "question_id": "ret-064",
+      "question": "Нужен ли медосмотр для поступления на высшее образование?",
+      "category": "faq",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ сообщает, что для высшего образования медосмотр при поступлении не нужен."
+    },
+    {
+      "question_id": "ret-065",
+      "question": "Сколько направлений можно выбрать в одном заявлении в СПбГЭУ?",
+      "category": "faq",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq",
+        "admission-rules-pdf"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ объясняет предел в пять направлений и конкурсные группы."
+    },
+    {
+      "question_id": "ret-066",
+      "question": "Нужен ли нотариальный перевод иностранного документа об образовании?",
+      "category": "faq",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ требует заверенный перевод документов на иностранном языке."
+    },
+    {
+      "question_id": "ret-067",
+      "question": "Как принимают в колледж: по экзаменам или по аттестату?",
+      "category": "faq",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ говорит о конкурсе по среднему баллу аттестата без экзаменов."
+    },
+    {
+      "question_id": "ret-068",
+      "question": "Может ли выпускник колледжа сразу перейти на сокращенный курс бакалавриата?",
+      "category": "faq",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ отвечает, что выпускники колледжа поступают на первый курс."
+    },
+    {
+      "question_id": "ret-069",
+      "question": "В каком месте будет учиться первокурсник колледжа бизнеса и технологий?",
+      "category": "faq",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ приводит адрес колледжа на улице Помяловского."
+    },
+    {
+      "question_id": "ret-070",
+      "question": "Можно ли рассчитывать на бюджет с гражданством Казахстана?",
+      "category": "faq",
+      "difficulty": "hard",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ перечисляет страны, граждане которых могут претендовать на бюджет."
+    },
+    {
+      "question_id": "ret-071",
+      "question": "Будет ли конкурс на платные места, если заявлений меньше установленного набора?",
+      "category": "faq",
+      "difficulty": "hard",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ связывает конкурс с превышением числа выполнивших условия абитуриентов над местами."
+    },
+    {
+      "question_id": "ret-072",
+      "question": "Может ли одиннадцатиклассник претендовать на место колледжа, рассчитанное на базу девяти классов?",
+      "category": "faq",
+      "difficulty": "hard",
+      "primary_source_id": "admissions-faq",
+      "acceptable_source_ids": [
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "FAQ разрешает участие на основании аттестата об основном общем образовании."
+    },
+    {
+      "question_id": "ret-073",
+      "question": "Во сколько работает приемная комиссия по будням летом 2026 года?",
+      "category": "admissions_overview",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Страница бакалавриата указывает часы приема по будним дням."
+    },
+    {
+      "question_id": "ret-074",
+      "question": "Принимает ли приемная комиссия посетителей по субботам?",
+      "category": "admissions_overview",
+      "difficulty": "easy",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "На странице бакалавриата указаны субботние часы приема."
+    },
+    {
+      "question_id": "ret-075",
+      "question": "В какие даты действует летний график приемной комиссии?",
+      "category": "admissions_overview",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Страница указывает период с 20 июня до 31 августа 2026 года."
+    },
+    {
+      "question_id": "ret-076",
+      "question": "Когда начнут принимать заявки на именную стипендию правительства Петербурга?",
+      "category": "admissions_overview",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Страница бакалавриата сообщает начало приема заявок 15 июля."
+    },
+    {
+      "question_id": "ret-077",
+      "question": "Есть ли у студентов СПбГЭУ программа военного обучения?",
+      "category": "admissions_overview",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor",
+        "admissions-faq"
+      ],
+      "expected_pages": null,
+      "evidence_note": "В обзоре университета описана программа военной подготовки."
+    },
+    {
+      "question_id": "ret-078",
+      "question": "Сколько зарубежных вузов участвуют в академическом сотрудничестве СПбГЭУ?",
+      "category": "admissions_overview",
+      "difficulty": "medium",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Обзор упоминает сотрудничество с более чем 250 зарубежными учебными заведениями."
+    },
+    {
+      "question_id": "ret-079",
+      "question": "Сколько активистов объединяет студенческий совет университета?",
+      "category": "admissions_overview",
+      "difficulty": "hard",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Обзор студенческой жизни указывает более 900 активистов."
+    },
+    {
+      "question_id": "ret-080",
+      "question": "Сколько мероприятий и проектов ежегодно организует студенческое сообщество?",
+      "category": "admissions_overview",
+      "difficulty": "hard",
+      "primary_source_id": "admissions-bachelor",
+      "acceptable_source_ids": [
+        "admissions-bachelor"
+      ],
+      "expected_pages": null,
+      "evidence_note": "Обзор говорит о более чем 300 мероприятиях за год."
+    }
+  ]
+}
