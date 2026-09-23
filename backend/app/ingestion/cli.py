@@ -1,0 +1,66 @@
+"""Manual entry point for curated HTML ingestion."""
+
+import argparse
+from collections.abc import Sequence
+from pathlib import Path
+
+import httpx
+
+from app.ingestion.fetcher import IngestionError, fetch_html
+from app.ingestion.html import extract_html
+from app.ingestion.manifest import ManifestError, load_manifest
+from app.ingestion.writer import build_document, write_document
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
+DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "html"
+
+
+def main(argv: Sequence[str] | None = None, transport: httpx.BaseTransport | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Fetch approved UNECON HTML sources")
+    parser.add_argument("command", choices=["fetch"])
+    parser.add_argument("--source-id", help="Fetch one active source")
+    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args(argv)
+
+    try:
+        manifest = load_manifest(args.manifest)
+    except ManifestError as exc:
+        print(f"FAILED manifest: {exc}")
+        print("processed=0 failed=1 skipped=0")
+        return 1
+
+    sources = manifest.sources
+    if args.source_id:
+        sources = [source for source in sources if source.id == args.source_id]
+        if not sources or not sources[0].active:
+            print(f"FAILED {args.source_id}: unknown or inactive source id")
+            print("processed=0 failed=1 skipped=0")
+            return 1
+
+    processed = failed = skipped = 0
+    with httpx.Client(timeout=15.0, transport=transport) as client:
+        for source in sources:
+            if not source.active:
+                skipped += 1
+                print(f"SKIPPED {source.id}")
+                continue
+            try:
+                page = fetch_html(source, client)
+                extracted = extract_html(page.html, source.title)
+                document = build_document(source, page.final_url, extracted)
+                write_document(args.output_dir, source.id, document)
+            except (IngestionError, OSError, ValueError) as exc:
+                failed += 1
+                print(f"FAILED {source.id}: {exc}")
+            else:
+                processed += 1
+                print(f"OK {source.id}")
+
+    print(f"processed={processed} failed={failed} skipped={skipped}")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

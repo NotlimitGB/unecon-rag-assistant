@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "admissions-bachelor",
+      "title": "Бакалавриат и специалитет",
+      "url": "https://unecon.ru/priem/bachelor/",
+      "source_type": "html",
+      "category": "admissions_overview",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "admission-documents",
+      "title": "Документы и правила приема",
+      "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/",
+      "source_type": "html",
+      "category": "admission_rules",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "admission-rules",
+      "title": "Правила приема",
+      "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/pravila-priema/",
+      "source_type": "html",
+      "category": "admission_rules",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "entrance-exams",
+      "title": "Вступительные испытания",
+      "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/programmy-vstupitelnyh-ispytanij/",
+      "source_type": "html",
+      "category": "entrance_exams",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "admissions-faq",
+      "title": "Вопрос — ответ",
+      "url": "https://unecon.ru/priem/vopros-otvet/",
+      "source_type": "html",
+      "category": "faq",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "tuition",
+      "title": "Платное обучение",
+      "url": "https://unecon.ru/priem/kontraktnoe-obuchenie/",
+      "source_type": "html",
+      "category": "tuition",
+      "admission_year": 2026,
+      "active": true
+    }
+  ]
+}
