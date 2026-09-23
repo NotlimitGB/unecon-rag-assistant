@@ -1,0 +1,163 @@
+#root {
+  min-height: 100vh;
+}
+
+.page-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px 24px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(205 231 237 / 65%), transparent 54%),
+    #f5f8f8;
+}
+
+.welcome-card {
+  width: min(100%, 680px);
+  padding: 56px 64px 48px;
+  box-sizing: border-box;
+  border: 1px solid #e0e9e9;
+  border-radius: 24px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 24px 72px rgb(20 53 59 / 9%);
+  text-align: center;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 28px;
+  border-radius: 15px;
+  background: #0d5057;
+  color: #fff;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #39737a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #17373b;
+  font-size: clamp(30px, 5vw, 42px);
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.description {
+  max-width: 440px;
+  margin: 18px auto 0;
+  color: #627477;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.connection-status {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 34px;
+  padding: 0 18px;
+  border: 1px solid #e5ebeb;
+  border-radius: 999px;
+  background: #f8fafa;
+  color: #506467;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.connection-status--success {
+  border-color: #cde9df;
+  background: #f0faf6;
+  color: #176445;
+}
+
+.connection-status--error {
+  border-color: #f0d7d2;
+  background: #fff6f4;
+  color: #a63a2c;
+}
+
+.connection-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9baeb0;
+}
+
+.connection-status--success .connection-dot {
+  background: #2b9b6f;
+}
+
+.connection-status--error .connection-dot {
+  background: #d45a48;
+}
+
+.connection-status--loading .connection-dot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.project-note {
+  margin: 28px 0 0;
+  color: #829092;
+  font-size: 13px;
+}
+
+.page-footer {
+  width: min(100%, 720px);
+  margin-top: 28px;
+  color: #829092;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-shell {
+    justify-content: flex-start;
+    padding: 56px 16px 24px;
+  }
+
+  .welcome-card {
+    padding: 42px 22px 36px;
+    border-radius: 20px;
+  }
+
+  .description {
+    font-size: 15px;
+  }
+
+  .page-footer {
+    margin-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
