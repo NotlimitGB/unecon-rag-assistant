@@ -15,6 +15,7 @@ from app.chunking.core import (
     ChunkingError,
     build_chunk_artifact,
     build_source_chunks,
+    validate_chunk_artifact,
     validate_normalized_document,
 )
 from app.ingestion.models import Source
@@ -48,6 +49,14 @@ INACTIVE_SOURCE = Source.model_validate(
         "title": "Неактивный источник",
         "url": "https://unecon.ru/inactive/",
         "active": False,
+    }
+)
+MISSING_SOURCE = Source.model_validate(
+    {
+        **HTML_SOURCE.model_dump(),
+        "id": "missing-document",
+        "title": "Отсутствующий документ",
+        "url": "https://unecon.ru/missing/",
     }
 )
 
@@ -114,9 +123,36 @@ def test_short_html_is_one_exact_chunk_with_null_page_provenance() -> None:
     assert chunk["char_count"] == len(text)
     assert chunk["page_start"] is None
     assert chunk["page_end"] is None
-    assert chunk["overlap_chars"] == 0
-    assert result["document"]["file_sha256"] is None
-    assert result["chunking"]["algorithm"] == "paragraph-aware-v1"
+    assert chunk["overlap_prefix_chars"] == 0
+    assert "chunk_id" in chunk
+    assert "id" not in chunk
+    assert result["source"]["content_sha256"] == _hash(text)
+    assert result["source"]["file_sha256"] is None
+    assert "document" not in result
+    assert set(result) == {"schema_version", "chunking", "source", "chunks"}
+    assert set(result["chunking"]) == {
+        "algorithm",
+        "max_chunk_chars",
+        "overlap_chars",
+        "pdf_cross_page_chunks",
+    }
+    assert result["chunking"] == {
+        "algorithm": "paragraph-aware-v1",
+        "max_chunk_chars": 1200,
+        "overlap_chars": 150,
+        "pdf_cross_page_chunks": False,
+    }
+    assert set(result["source"]) == {
+        "id",
+        "title",
+        "url",
+        "final_url",
+        "source_type",
+        "category",
+        "admission_year",
+        "content_sha256",
+        "file_sha256",
+    }
 
 
 def test_html_paragraph_order_overlap_and_source_coverage() -> None:
@@ -127,8 +163,8 @@ def test_html_paragraph_order_overlap_and_source_coverage() -> None:
 
     assert len(chunks) > 2
     assert all(chunk["char_count"] <= MAX_CHARS for chunk in chunks)
-    assert any(0 < chunk["overlap_chars"] <= TARGET_OVERLAP_CHARS for chunk in chunks[1:])
-    rebuilt = "".join(chunk["text"][chunk["overlap_chars"] :] for chunk in chunks)
+    assert any(0 < chunk["overlap_prefix_chars"] <= TARGET_OVERLAP_CHARS for chunk in chunks[1:])
+    rebuilt = "".join(chunk["text"][chunk["overlap_prefix_chars"] :] for chunk in chunks)
     assert rebuilt == text
     assert all(chunk["page_start"] is None for chunk in chunks)
     assert [chunk["ordinal"] for chunk in chunks] == list(range(1, len(chunks) + 1))
@@ -148,7 +184,7 @@ def test_long_blocks_split_at_sentence_word_then_character_boundaries(
     chunks = build_chunk_artifact(HTML_SOURCE, html_document(text))["chunks"]
     assert len(chunks) > 1
     assert all(len(chunk["text"]) <= MAX_CHARS for chunk in chunks)
-    assert "".join(chunk["text"][chunk["overlap_chars"] :] for chunk in chunks) == text
+    assert "".join(chunk["text"][chunk["overlap_prefix_chars"] :] for chunk in chunks) == text
     if expected_boundary == "sentence":
         assert chunks[0]["text"].rstrip().endswith(".")
     if expected_boundary == "word":
@@ -167,11 +203,14 @@ def test_pdf_chunks_are_isolated_by_page_and_keep_empty_pages() -> None:
     assert [page["page_number"] for page in normalized["document"]["pages"]] == [1, 2, 3]
     assert all(chunk["page_start"] == chunk["page_end"] for chunk in chunks)
     assert {chunk["page_start"] for chunk in chunks} == {1, 3}
-    assert result["document"]["file_sha256"] == normalized["document"]["file_sha256"]
+    assert result["source"]["file_sha256"] == normalized["document"]["file_sha256"]
+    assert result["source"]["content_sha256"] == normalized["document"]["content_sha256"]
+    assert "document" not in result
     for page_number, page_text in ((1, first), (2, ""), (3, third)):
         page_chunks = [chunk for chunk in chunks if chunk["page_start"] == page_number]
         assert (
-            "".join(chunk["text"][chunk["overlap_chars"] :] for chunk in page_chunks) == page_text
+            "".join(chunk["text"][chunk["overlap_prefix_chars"] :] for chunk in page_chunks)
+            == page_text
         )
 
 
@@ -206,10 +245,41 @@ def test_ids_and_hashes_are_deterministic_and_follow_source_content() -> None:
     changed = build_chunk_artifact(HTML_SOURCE, html_document("Текст документа 2027"))
 
     assert first == repeat
-    assert first["chunks"][0]["id"] != changed["chunks"][0]["id"]
+    assert first["chunks"][0]["chunk_id"] == "admissions-faq:0001:34acf49a11c6"
+    assert first["chunks"][0]["chunk_id"] == repeat["chunks"][0]["chunk_id"]
+    assert first["chunks"][0]["chunk_id"] != changed["chunks"][0]["chunk_id"]
     chunk = first["chunks"][0]
     assert chunk["content_sha256"] == _hash(chunk["text"])
-    assert chunk["id"].startswith(f"{HTML_SOURCE.id}:0001:")
+    assert chunk["chunk_id"].startswith(f"{HTML_SOURCE.id}:0001:")
+    assert "id" not in chunk
+    assert "overlap_prefix_chars" in chunk
+    assert "overlap_chars" not in chunk
+
+
+def test_chunk_artifact_validator_rejects_obsolete_or_extra_public_fields() -> None:
+    text = "Короткий документ для проверки контракта."
+    normalized = html_document(text)
+    artifact = build_chunk_artifact(HTML_SOURCE, normalized)
+    chunks = [(None, text)]
+
+    with_document = {**artifact, "document": {"content_sha256": _hash(text)}}
+    with pytest.raises(ChunkingError, match="invalid chunk artifact schema"):
+        validate_chunk_artifact(HTML_SOURCE, with_document, chunks)
+
+    with_old_chunking_key = json.loads(json.dumps(artifact))
+    with_old_chunking_key["chunking"]["max_chars"] = 1200
+    with pytest.raises(ChunkingError, match="invalid chunking metadata schema"):
+        validate_chunk_artifact(HTML_SOURCE, with_old_chunking_key, chunks)
+    with_old_target_key = json.loads(json.dumps(artifact))
+    with_old_target_key["chunking"]["target_overlap_chars"] = 150
+    with pytest.raises(ChunkingError, match="invalid chunking metadata schema"):
+        validate_chunk_artifact(HTML_SOURCE, with_old_target_key, chunks)
+
+    with_old_chunk_key = json.loads(json.dumps(artifact))
+    chunk = with_old_chunk_key["chunks"][0]
+    chunk["id"] = chunk.pop("chunk_id")
+    with pytest.raises(ChunkingError, match=r"invalid chunks\[0\] schema"):
+        validate_chunk_artifact(HTML_SOURCE, with_old_chunk_key, chunks)
 
 
 def test_failed_validation_and_atomic_write_leave_existing_artifact_unchanged(
@@ -269,32 +339,59 @@ def test_cli_builds_selected_source_and_reports_missing_inactive_or_unknown(
 
     assert main(args) == 0
     assert (output_dir / f"{HTML_SOURCE.id}.json").exists()
-    assert "processed=1 failed=0 skipped=0" in capsys.readouterr().out
+    success_output = capsys.readouterr().out
+    assert "OK admissions-faq chunks=1" in success_output
+    assert "processed=1 failed=0 skipped=0 chunks=1" in success_output
 
     missing_args = [*args]
     missing_args[2] = "missing-source"
     assert main(missing_args) == 1
-    assert "unknown or inactive" in capsys.readouterr().out
+    unknown_output = capsys.readouterr().out
+    assert "unknown or inactive" in unknown_output
+    assert "processed=0 failed=1 skipped=0 chunks=0" in unknown_output
 
     inactive_manifest = write_manifest(tmp_path / "inactive.json", [INACTIVE_SOURCE])
     inactive_args = [*args]
     inactive_args[inactive_args.index(str(manifest))] = str(inactive_manifest)
     inactive_args[inactive_args.index("--source-id") + 1] = INACTIVE_SOURCE.id
     assert main(inactive_args) == 1
-    assert "unknown or inactive" in capsys.readouterr().out
+    inactive_output = capsys.readouterr().out
+    assert "unknown or inactive" in inactive_output
+    assert "processed=0 failed=1 skipped=0 chunks=0" in inactive_output
+
+    assert main(["build", "--manifest", str(tmp_path / "missing-manifest.json")]) == 1
+    manifest_error_output = capsys.readouterr().out
+    assert "processed=0 failed=1 skipped=0 chunks=0" in manifest_error_output
+
+    failed_args = [*args]
+    failed_args[failed_args.index("--source-id") + 1] = MISSING_SOURCE.id
+    failed_manifest = write_manifest(tmp_path / "failed-source.json", [MISSING_SOURCE])
+    failed_args[failed_args.index(str(manifest))] = str(failed_manifest)
+    failed_args[failed_args.index("--input-root") + 1] = str(tmp_path / "no-local-input")
+    assert main(failed_args) == 1
+    assert "processed=0 failed=1 skipped=0 chunks=0" in capsys.readouterr().out
 
 
 def test_cli_continues_after_missing_local_artifact_and_skips_inactive(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    manifest = write_manifest(tmp_path / "manifest.json", [HTML_SOURCE, INACTIVE_SOURCE])
+    manifest = write_manifest(
+        tmp_path / "manifest.json", [HTML_SOURCE, MISSING_SOURCE, INACTIVE_SOURCE]
+    )
+    input_root = tmp_path / "input"
+    input_dir = input_root / "html"
+    input_dir.mkdir(parents=True)
+    (input_dir / f"{HTML_SOURCE.id}.json").write_text(
+        json.dumps(html_document("Один успешный локальный чанк"), ensure_ascii=False),
+        encoding="utf-8",
+    )
     result = main(
         [
             "build",
             "--manifest",
             str(manifest),
             "--input-root",
-            str(tmp_path / "empty"),
+            str(input_root),
             "--output-dir",
             str(tmp_path / "out"),
         ]
@@ -302,9 +399,10 @@ def test_cli_continues_after_missing_local_artifact_and_skips_inactive(
     output = capsys.readouterr().out
 
     assert result == 1
-    assert "FAILED admissions-faq" in output
+    assert "OK admissions-faq chunks=1" in output
+    assert "FAILED missing-document" in output
     assert "SKIPPED inactive-page" in output
-    assert "processed=0 failed=1 skipped=1" in output
+    assert "processed=1 failed=1 skipped=1 chunks=1" in output
 
 
 def test_chunking_import_boundary_has_no_network_dependencies() -> None:

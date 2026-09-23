@@ -199,14 +199,14 @@ def _chunk_unit(
         digest = hashlib.sha256("\0".join(id_parts).encode("utf-8")).hexdigest()
         chunks.append(
             {
-                "id": f"{source_id}:{ordinal:04d}:{digest[:12]}",
+                "chunk_id": f"{source_id}:{ordinal:04d}:{digest[:12]}",
                 "ordinal": ordinal,
                 "page_start": page_start,
                 "page_end": page_end,
                 "char_count": len(chunk_text),
                 "text": chunk_text,
                 "content_sha256": _sha256_text(chunk_text),
-                "overlap_chars": overlap_chars,
+                "overlap_prefix_chars": overlap_chars,
             }
         )
     return chunks
@@ -239,12 +239,18 @@ def build_chunk_artifact(source: Source, normalized: Any) -> dict[str, Any]:
         "schema_version": 1,
         "chunking": {
             "algorithm": ALGORITHM,
-            "max_chars": MAX_CHARS,
-            "target_overlap_chars": TARGET_OVERLAP_CHARS,
+            "max_chunk_chars": MAX_CHARS,
+            "overlap_chars": TARGET_OVERLAP_CHARS,
+            "pdf_cross_page_chunks": False,
         },
-        "source": normalized["source"],
-        "document": {
-            "title": document["title"],
+        "source": {
+            "id": source.id,
+            "title": source.title,
+            "url": source.url,
+            "final_url": normalized["source"]["final_url"],
+            "source_type": source.source_type,
+            "category": source.category,
+            "admission_year": source.admission_year,
             "content_sha256": document_hash,
             "file_sha256": document.get("file_sha256"),
         },
@@ -259,30 +265,44 @@ def validate_chunk_artifact(
 ) -> None:
     """Check chunk limits, hashes, IDs, page boundaries, and lossless source coverage."""
     root = _required_dict(artifact, "chunk artifact")
-    _require_exact_keys(
-        root, {"schema_version", "chunking", "source", "document", "chunks"}, "chunk artifact"
-    )
+    _require_exact_keys(root, {"schema_version", "chunking", "source", "chunks"}, "chunk artifact")
     if type(root["schema_version"]) is not int or root["schema_version"] != 1:
         raise ChunkingError("unsupported chunk artifact schema_version")
     chunking = _required_dict(root["chunking"], "chunking metadata")
     _require_exact_keys(
-        chunking, {"algorithm", "max_chars", "target_overlap_chars"}, "chunking metadata"
+        chunking,
+        {"algorithm", "max_chunk_chars", "overlap_chars", "pdf_cross_page_chunks"},
+        "chunking metadata",
     )
+    if (
+        not isinstance(chunking["algorithm"], str)
+        or type(chunking["max_chunk_chars"]) is not int
+        or type(chunking["overlap_chars"]) is not int
+        or type(chunking["pdf_cross_page_chunks"]) is not bool
+    ):
+        raise ChunkingError("chunking metadata has invalid value types")
     if chunking != {
         "algorithm": ALGORITHM,
-        "max_chars": MAX_CHARS,
-        "target_overlap_chars": TARGET_OVERLAP_CHARS,
+        "max_chunk_chars": MAX_CHARS,
+        "overlap_chars": TARGET_OVERLAP_CHARS,
+        "pdf_cross_page_chunks": False,
     }:
         raise ChunkingError("chunking metadata does not match the active algorithm")
 
     chunk_source = _required_dict(root["source"], "chunk artifact source")
-    chunk_document = _required_dict(root["document"], "chunk artifact document")
-    _require_exact_keys(
-        chunk_document, {"title", "content_sha256", "file_sha256"}, "chunk artifact document"
-    )
     _require_exact_keys(
         chunk_source,
-        {"id", "title", "url", "source_type", "category", "admission_year", "final_url"},
+        {
+            "id",
+            "title",
+            "url",
+            "final_url",
+            "source_type",
+            "category",
+            "admission_year",
+            "content_sha256",
+            "file_sha256",
+        },
         "chunk artifact source",
     )
     if chunk_source.get("id") != source.id:
@@ -290,6 +310,8 @@ def validate_chunk_artifact(
     for key, expected_value in source.model_dump(exclude={"active"}).items():
         if chunk_source.get(key) != expected_value:
             raise ChunkingError(f"chunk artifact source metadata mismatch for {key}")
+    if not isinstance(chunk_source["final_url"], str):
+        raise ChunkingError("chunk artifact final_url must be a string")
     try:
         validate_official_url(chunk_source["final_url"])
     except ValueError as exc:
@@ -300,18 +322,14 @@ def validate_chunk_artifact(
         if source.source_type == "html"
         else PDF_PAGE_SEPARATOR.join(text for _, text in text_units if text)
     )
-    content_hash = _validate_hash(
-        chunk_document["content_sha256"], "chunk artifact document.content_sha256"
-    )
+    content_hash = _validate_hash(chunk_source["content_sha256"], "source.content_sha256")
     if content_hash != _sha256_text(document_text):
-        raise ChunkingError("chunk artifact document hash does not match source text")
-    if not isinstance(chunk_document["title"], str):
-        raise ChunkingError("chunk artifact document title must be a string")
+        raise ChunkingError("source content_sha256 does not match normalized document text")
     if source.source_type == "html":
-        if chunk_document["file_sha256"] is not None:
-            raise ChunkingError("HTML chunk artifact file_sha256 must be null")
+        if chunk_source["file_sha256"] is not None:
+            raise ChunkingError("HTML source.file_sha256 must be null")
     else:
-        _validate_hash(chunk_document["file_sha256"], "chunk artifact document.file_sha256")
+        _validate_hash(chunk_source["file_sha256"], "source.file_sha256")
     chunk_list = root["chunks"]
     if not isinstance(chunk_list, list) or not chunk_list:
         raise ChunkingError("chunk artifact must contain at least one chunk")
@@ -323,14 +341,14 @@ def validate_chunk_artifact(
         _require_exact_keys(
             chunk,
             {
-                "id",
+                "chunk_id",
                 "ordinal",
                 "page_start",
                 "page_end",
                 "char_count",
                 "text",
                 "content_sha256",
-                "overlap_chars",
+                "overlap_prefix_chars",
             },
             f"chunks[{expected_ordinal - 1}]",
         )
@@ -342,10 +360,10 @@ def validate_chunk_artifact(
         if type(chunk["char_count"]) is not int or chunk["char_count"] != len(text):
             raise ChunkingError("chunk char_count does not match its text")
         if (
-            type(chunk["overlap_chars"]) is not int
-            or not 0 <= chunk["overlap_chars"] <= TARGET_OVERLAP_CHARS
+            type(chunk["overlap_prefix_chars"]) is not int
+            or not 0 <= chunk["overlap_prefix_chars"] <= TARGET_OVERLAP_CHARS
         ):
-            raise ChunkingError("chunk overlap_chars is outside the supported range")
+            raise ChunkingError("chunk overlap_prefix_chars is outside the supported range")
         expected_page = chunk["page_start"]
         if source.source_type == "html":
             if expected_page is not None or chunk["page_end"] is not None:
@@ -369,7 +387,7 @@ def validate_chunk_artifact(
         page_number = chunk["page_start"]
         id_parts = (
             source.id,
-            root["document"]["content_sha256"],
+            root["source"]["content_sha256"],
             str(expected_ordinal),
             "" if page_number is None else str(page_number),
             "" if chunk["page_end"] is None else str(chunk["page_end"]),
@@ -377,16 +395,16 @@ def validate_chunk_artifact(
         )
         digest = hashlib.sha256("\0".join(id_parts).encode("utf-8")).hexdigest()
         expected_id = f"{source.id}:{expected_ordinal:04d}:{digest[:12]}"
-        if chunk["id"] != expected_id or chunk["id"] in seen_ids:
+        if chunk["chunk_id"] != expected_id or chunk["chunk_id"] in seen_ids:
             raise ChunkingError("chunk id is invalid or duplicated")
-        seen_ids.add(chunk["id"])
+        seen_ids.add(chunk["chunk_id"])
         grouped[group_key].append(chunk)
 
     for page_number, source_text in text_units:
         page_chunks = grouped[page_number]
         reconstructed: list[str] = []
         for index, chunk in enumerate(page_chunks):
-            overlap = chunk["overlap_chars"]
+            overlap = chunk["overlap_prefix_chars"]
             if index == 0:
                 if overlap != 0:
                     raise ChunkingError("first chunk in a source unit cannot have overlap")
@@ -401,7 +419,7 @@ def validate_chunk_artifact(
             raise ChunkingError("chunks do not cover source text exactly")
 
 
-def build_source_chunks(source: Source, input_root: Path, output_dir: Path) -> Path:
+def build_source_chunks(source: Source, input_root: Path, output_dir: Path) -> int:
     input_path = input_root / source.source_type / f"{source.id}.json"
     try:
         with input_path.open(encoding="utf-8") as handle:
@@ -409,7 +427,8 @@ def build_source_chunks(source: Source, input_root: Path, output_dir: Path) -> P
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ChunkingError(f"cannot read normalized document {input_path}: {exc}") from exc
     artifact = build_chunk_artifact(source, normalized)
-    return write_document(output_dir, source.id, artifact)
+    write_document(output_dir, source.id, artifact)
+    return len(artifact["chunks"])
 
 
 def load_source_manifest(path: Path):
