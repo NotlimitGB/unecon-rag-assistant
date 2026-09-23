@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.ingestion.fetcher import IngestionError
+from app.ingestion.errors import IngestionError
 from app.ingestion.html import ExtractedDocument
 from app.ingestion.models import Source
 from app.ingestion.pdf import ExtractedPdf
@@ -43,8 +43,7 @@ def build_pdf_document(
             "title": source.title,
             "page_count": len(extracted.pages),
             "pages": [
-                {"page_number": page.page_number, "text": page.text}
-                for page in extracted.pages
+                {"page_number": page.page_number, "text": page.text} for page in extracted.pages
             ],
             "text": extracted.text,
             "content_sha256": hashlib.sha256(extracted.text.encode("utf-8")).hexdigest(),
@@ -60,8 +59,13 @@ def write_document(output_dir: Path, source_id: str, document: dict[str, Any]) -
     temporary: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", newline="\n", dir=output_dir,
-            prefix=f".{source_id}.", suffix=".tmp", delete=False,
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=output_dir,
+            prefix=f".{source_id}.",
+            suffix=".tmp",
+            delete=False,
         ) as handle:
             temporary = Path(handle.name)
             handle.write(serialized)

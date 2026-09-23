@@ -1,1 +1,1 @@
-"""Controlled ingestion of approved UNECON HTML sources."""
+"""Controlled ingestion of approved UNECON HTML and PDF sources."""

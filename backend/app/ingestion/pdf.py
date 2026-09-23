@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from app.ingestion.fetcher import IngestionError
+from app.ingestion.errors import IngestionError
 
 MIN_MEANINGFUL_CHARACTERS = 20
 PAGE_SEPARATOR = "\n\n\f\n\n"

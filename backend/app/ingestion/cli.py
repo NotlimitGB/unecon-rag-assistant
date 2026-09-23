@@ -1,4 +1,4 @@
-"""Manual entry point for curated HTML ingestion."""
+"""Manual entry point for curated HTML and PDF ingestion."""
 
 import argparse
 from collections.abc import Sequence
@@ -6,7 +6,8 @@ from pathlib import Path
 
 import httpx
 
-from app.ingestion.fetcher import IngestionError, fetch_html, fetch_pdf
+from app.ingestion.errors import IngestionError
+from app.ingestion.fetcher import fetch_html, fetch_pdf
 from app.ingestion.html import extract_html
 from app.ingestion.manifest import ManifestError, load_manifest
 from app.ingestion.pdf import extract_pdf
@@ -60,9 +61,7 @@ def main(argv: Sequence[str] | None = None, transport: httpx.BaseTransport | Non
                 else:
                     pdf = fetch_pdf(source, client)
                     extracted_pdf = extract_pdf(pdf.content)
-                    document = build_pdf_document(
-                        source, pdf.final_url, pdf.content, extracted_pdf
-                    )
+                    document = build_pdf_document(source, pdf.final_url, pdf.content, extracted_pdf)
                     output_dir = args.output_dir or DEFAULT_OUTPUT_ROOT / "pdf"
                 write_document(output_dir, source.id, document)
             except (IngestionError, OSError, ValueError) as exc:

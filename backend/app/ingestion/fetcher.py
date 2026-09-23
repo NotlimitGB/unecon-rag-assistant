@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 import httpx
 
+from app.ingestion.errors import IngestionError
 from app.ingestion.models import Source, validate_official_url
 
 MAX_REDIRECTS = 5
@@ -12,10 +13,6 @@ MAX_PDF_BYTES = 25 * 1024 * 1024
 BASE_HEADERS = {
     "User-Agent": "unecon-rag-assistant-thesis/0.1",
 }
-
-
-class IngestionError(ValueError):
-    """A source could not be safely fetched or normalized."""
 
 
 @dataclass(frozen=True)
@@ -72,9 +69,7 @@ def fetch_content(
                 content_type_header = response.headers.get("content-type", "")
                 content_type = content_type_header.split(";", 1)[0].strip().lower()
                 if content_type not in accepted_content_types:
-                    raise IngestionError(
-                        f"unsupported content type: {content_type or 'missing'}"
-                    )
+                    raise IngestionError(f"unsupported content type: {content_type or 'missing'}")
 
                 if max_bytes is not None:
                     content_length = response.headers.get("content-length")
