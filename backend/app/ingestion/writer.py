@@ -10,6 +10,7 @@ from typing import Any
 from app.ingestion.fetcher import IngestionError
 from app.ingestion.html import ExtractedDocument
 from app.ingestion.models import Source
+from app.ingestion.pdf import ExtractedPdf
 
 
 def build_document(source: Source, final_url: str, extracted: ExtractedDocument) -> dict[str, Any]:
@@ -25,6 +26,29 @@ def build_document(source: Source, final_url: str, extracted: ExtractedDocument)
             "title": extracted.title,
             "text": extracted.text,
             "content_sha256": hashlib.sha256(extracted.text.encode("utf-8")).hexdigest(),
+        },
+    }
+
+
+def build_pdf_document(
+    source: Source, final_url: str, pdf_bytes: bytes, extracted: ExtractedPdf
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "source": {
+            **source.model_dump(exclude={"active"}),
+            "final_url": final_url,
+        },
+        "document": {
+            "title": source.title,
+            "page_count": len(extracted.pages),
+            "pages": [
+                {"page_number": page.page_number, "text": page.text}
+                for page in extracted.pages
+            ],
+            "text": extracted.text,
+            "content_sha256": hashlib.sha256(extracted.text.encode("utf-8")).hexdigest(),
+            "file_sha256": hashlib.sha256(pdf_bytes).hexdigest(),
         },
     }
 

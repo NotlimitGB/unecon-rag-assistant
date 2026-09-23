@@ -54,6 +54,60 @@
       "category": "tuition",
       "admission_year": 2026,
       "active": true
+    },
+    {
+      "id": "admission-rules-pdf",
+      "title": "Правила приема 2026",
+      "url": "https://unecon.ru/wp-content/uploads/2026/06/pp_spbgeu_2026_13052026.pdf",
+      "source_type": "pdf",
+      "category": "admission_rules",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "admission-capacity-pdf",
+      "title": "Количество мест для приема на 2026/27 учебный год",
+      "url": "https://unecon.ru/wp-content/uploads/2026/01/kolichestvo_mest_dlya_priema_2026_2027_bak_specz_so_snoskami.pdf",
+      "source_type": "pdf",
+      "category": "admission_capacity",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "admission-deadlines-pdf",
+      "title": "Сроки проведения приема в 2026 году",
+      "url": "https://unecon.ru/wp-content/uploads/2026/02/sroki-priema-2026-bak.pdf",
+      "source_type": "pdf",
+      "category": "admission_deadlines",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "entrance-exams-list-pdf",
+      "title": "Перечень вступительных испытаний 2026",
+      "url": "https://unecon.ru/wp-content/uploads/2026/01/perechen_k_bak_specz_vstupitelnyh_ispytanij_s_ukazaniem_min_ballov-1.pdf",
+      "source_type": "pdf",
+      "category": "entrance_exams",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "entrance-exam-regulations-pdf",
+      "title": "Регламент проведения вступительных испытаний",
+      "url": "https://unecon.ru/wp-content/uploads/2026/06/reglament-vi.pdf",
+      "source_type": "pdf",
+      "category": "entrance_exams",
+      "admission_year": 2026,
+      "active": true
+    },
+    {
+      "id": "tuition-order-128-pdf",
+      "title": "Стоимость обучения 2026/2027 — приказ № 128",
+      "url": "https://unecon.ru/wp-content/uploads/2026/05/prikaz-%E2%84%96-128-ot-13.04.2026-ob-ustan.-stoimosti-obucheniya-dlya-licz-postup.-na-1-kurs-2026-2027-uch.g.pdf",
+      "source_type": "pdf",
+      "category": "tuition",
+      "admission_year": 2026,
+      "active": true
     }
   ]
 }

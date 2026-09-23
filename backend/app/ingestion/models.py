@@ -42,7 +42,7 @@ class Source(BaseModel):
     id: StrictStr
     title: StrictStr
     url: StrictStr
-    source_type: Literal["html"]
+    source_type: Literal["html", "pdf"]
     category: StrictStr
     admission_year: StrictInt = Field(ge=1900, le=2100)
     active: StrictBool

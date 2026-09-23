@@ -6,22 +6,27 @@ from pathlib import Path
 
 import httpx
 
-from app.ingestion.fetcher import IngestionError, fetch_html
+from app.ingestion.fetcher import IngestionError, fetch_html, fetch_pdf
 from app.ingestion.html import extract_html
 from app.ingestion.manifest import ManifestError, load_manifest
-from app.ingestion.writer import build_document, write_document
+from app.ingestion.pdf import extract_pdf
+from app.ingestion.writer import build_document, build_pdf_document, write_document
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
-DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "html"
+DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "processed"
 
 
 def main(argv: Sequence[str] | None = None, transport: httpx.BaseTransport | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Fetch approved UNECON HTML sources")
+    parser = argparse.ArgumentParser(description="Fetch approved UNECON HTML and PDF sources")
     parser.add_argument("command", choices=["fetch"])
     parser.add_argument("--source-id", help="Fetch one active source")
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Override the destination directory (default depends on source type)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -47,10 +52,19 @@ def main(argv: Sequence[str] | None = None, transport: httpx.BaseTransport | Non
                 print(f"SKIPPED {source.id}")
                 continue
             try:
-                page = fetch_html(source, client)
-                extracted = extract_html(page.html, source.title)
-                document = build_document(source, page.final_url, extracted)
-                write_document(args.output_dir, source.id, document)
+                if source.source_type == "html":
+                    page = fetch_html(source, client)
+                    extracted = extract_html(page.html, source.title)
+                    document = build_document(source, page.final_url, extracted)
+                    output_dir = args.output_dir or DEFAULT_OUTPUT_ROOT / "html"
+                else:
+                    pdf = fetch_pdf(source, client)
+                    extracted_pdf = extract_pdf(pdf.content)
+                    document = build_pdf_document(
+                        source, pdf.final_url, pdf.content, extracted_pdf
+                    )
+                    output_dir = args.output_dir or DEFAULT_OUTPUT_ROOT / "pdf"
+                write_document(output_dir, source.id, document)
             except (IngestionError, OSError, ValueError) as exc:
                 failed += 1
                 print(f"FAILED {source.id}: {exc}")
