@@ -1,14 +1,17 @@
 """Manual commands for building and searching the local dense index."""
 
 import argparse
+import io
 import sys
 from collections.abc import Sequence
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from app.config import settings
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession, build_index, search
 from app.retrieval.reranker import RerankedRetrievalSession
+from app.retrieval.service import RetrievalService
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
@@ -46,6 +49,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--reranker-max-length", type=int, default=settings.reranker_max_length
     )
     rerank_parser.add_argument("--candidate-k", type=int, default=settings.reranker_candidate_k)
+    retrieve_parser = commands.add_parser("retrieve", parents=[shared])
+    retrieve_parser.add_argument("question")
+    retrieve_parser.add_argument("--mode", choices=["dense", "reranked"])
+    retrieve_parser.add_argument("--top-k", type=int)
+    retrieve_parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     if args.batch_size < 1 or args.batch_size > 128:
         parser.error("--batch-size must be from 1 to 128")
@@ -98,6 +106,39 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 print(f"   source={result['source_id']} page={page} chunk_id={result['chunk_id']}")
                 print(f"   text={result['text'][:240].replace(chr(10), ' ')}")
+        elif args.command == "retrieve":
+            config = settings.model_copy(
+                update={
+                    "embedding_device": args.device,
+                    "embedding_batch_size": args.batch_size,
+                }
+            )
+            service = RetrievalService(
+                config=config,
+                mode=args.mode,
+                manifest_path=args.manifest,
+                chunks_dir=args.chunks_dir,
+                index_dir=args.index_dir,
+            )
+            if args.json:
+                with redirect_stdout(io.StringIO()):
+                    response = service.retrieve(args.question, args.top_k)
+                print(response.model_dump_json())
+            else:
+                response = service.retrieve(args.question, args.top_k)
+                print(f"mode={response.mode} top_k={response.top_k} query={response.query}")
+                for result in response.results:
+                    page = result.page if result.page is not None else "-"
+                    print(
+                        f"{result.rank}. source={result.source_id} "
+                        f"page={page} score={result.score:.6f}"
+                    )
+                    print(f"   chunk_id={result.chunk_id}")
+                    print(f"   url={result.source_url}")
+                    print(f"   dense_score={result.dense_score:.6f}")
+                    if result.rerank_score is not None:
+                        print(f"   rerank_score={result.rerank_score:.6f}")
+                    print(f"   text={result.text[:240].replace(chr(10), ' ')}")
         else:
             results = search(
                 args.question,
@@ -118,7 +159,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(result["text"][:240].replace("\n", " "))
         return 0
     except (RetrievalError, OSError, ValueError, RuntimeError) as exc:
-        print(f"FAILED: {exc}")
+        stream = sys.stderr if args.command == "retrieve" and args.json else sys.stdout
+        print(f"FAILED: {exc}", file=stream)
         return 1
 
 

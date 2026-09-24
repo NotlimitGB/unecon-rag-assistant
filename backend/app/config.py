@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, StrictInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -40,6 +40,19 @@ class Settings(BaseSettings):
     reranker_candidate_k: int = Field(
         default=20, ge=5, le=100, validation_alias="RERANKER_CANDIDATE_K"
     )
+    retrieval_mode: Literal["dense", "reranked"] = Field(
+        default="reranked", validation_alias="RETRIEVAL_MODE"
+    )
+    retrieval_top_k: StrictInt = Field(default=5, ge=1, le=20, validation_alias="RETRIEVAL_TOP_K")
+
+    @field_validator("retrieval_top_k", mode="before")
+    @classmethod
+    def parse_retrieval_top_k(cls, value: object) -> int:
+        if type(value) is int:
+            return value
+        if isinstance(value, str) and value.isascii() and value.isdecimal():
+            return int(value)
+        raise ValueError("retrieval top K must be an integer")
 
     @field_validator("embedding_model")
     @classmethod

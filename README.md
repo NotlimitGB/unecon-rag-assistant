@@ -92,7 +92,7 @@ python -m app.chunking.cli build --source-id admission-rules-pdf
 
 Параметры `--manifest`, `--input-root` и `--output-dir` позволяют задать собственные пути. По умолчанию используется `data/source_manifest.json`, входные документы из `data/processed/html/` и `data/processed/pdf/`, а результаты сохраняются в `data/processed/chunks/<source-id>.json`. Артефакт хранит алгоритм `paragraph-aware-v1`, метаданные и хеш документа, детерминированные ID чанков, хеш и длину каждого фрагмента, фактический размер перекрытия и происхождение по странице PDF. Максимальный размер чанка — 1200 символов, целевое перекрытие — до 150 символов. PDF обрабатывается постранично; пустые страницы остаются в исходном документе, но не создают чанк.
 
-### Плотный поиск
+### Поиск приложения
 
 Для сборки индекса нужны чанки **всех активных** источников. Из `backend/` выполните:
 
@@ -100,12 +100,18 @@ python -m app.chunking.cli build --source-id admission-rules-pdf
 python -m app.ingestion.cli fetch
 python -m app.chunking.cli build
 python -m app.retrieval.cli build-index
-python -m app.retrieval.cli search "Какие сроки подачи документов в 2026 году?" --top-k 5
+python -m app.retrieval.cli retrieve "Какие вступительные испытания нужно сдавать?"
 ```
 
 Первая сборка загрузит модель `BAAI/bge-m3` из Hugging Face; для этого нужен доступ к сети и свободное место для кеша. GPU необязателен: `EMBEDDING_DEVICE=auto` использует CUDA при наличии, иначе CPU. В `.env` можно задать `EMBEDDING_MODEL`, `EMBEDDING_DEVICE` (`auto`, `cpu`, `cuda`) и `EMBEDDING_BATCH_SIZE` (1–128). CLI также принимает `--manifest`, `--chunks-dir`, `--index-dir`, `--device`, `--batch-size`; поиск ограничивает `--top-k` диапазоном 1–50.
 
-Индекс и метаданные сохраняются в `data/processed/index/index.faiss` и `metadata.json`. Поиск проверяет хеш индекса и актуальность всех чанков; после изменения источников или чанков соберите индекс заново. Результат содержит исходный score скалярного произведения нормализованных векторов, ID чанка, URL и страницу PDF. Этот этап не формирует ответ на вопрос.
+Индекс и метаданные сохраняются в `data/processed/index/index.faiss` и `metadata.json`. Поиск проверяет хеш индекса и актуальность всех чанков; после изменения источников или чанков соберите индекс заново. По умолчанию сервис получает плотные top-20, оценивает их моделью `BAAI/bge-reranker-v2-m3` и возвращает top-5 с текстом, официальным URL и страницей PDF. Он повторно использует загруженные индекс и модели между запросами одного экземпляра. Результат содержит исходный `dense_score` и итоговый `rerank_score`; ответ на вопрос пока не формируется.
+
+В `.env` доступны `RETRIEVAL_MODE=reranked` (`reranked` или `dense`) и `RETRIEVAL_TOP_K=5` (1–20). Если reranker недоступен, поиск завершается ошибкой без автоматического перехода на плотный режим. Для отдельного вызова используйте `retrieve "вопрос" --mode dense` или `--mode reranked`; `--top-k N` меняет число результатов, а `--json` печатает только типизированный JSON-ответ. `source_url` в нём — конечный проверенный адрес официального источника; внутренний ID вектора не выводится.
+
+### Диагностический плотный поиск
+
+Команда `python -m app.retrieval.cli search "Какие сроки подачи документов в 2026 году?" --top-k 5` сохраняет исходную плотную выдачу BGE-M3 и FAISS для диагностики и оценки. Её score — скалярное произведение нормализованных векторов. Она не использует reranker.
 
 ### Оценка качества поиска
 
@@ -119,16 +125,16 @@ python -m app.evaluation.cli retrieval
 
 Команда принимает `--dataset`, `--manifest`, `--chunks-dir`, `--index-dir`, `--output-dir`, `--device` и `--batch-size`. По умолчанию отчеты сохраняются в `data/processed/evaluation/retrieval_report.json` и `retrieval_report.md`; они не отслеживаются Git. Оценка считает Primary Recall@1/3/5 и Primary MRR@5, а также диагностические Accepted и PDF Page Recall/MRR и разбивки по категориям и сложности. Модель BGE-M3 загружается один раз на весь прогон. Оценивается только выдача фрагментов: ранжирование в этом этапе не настраивается, ответы не генерируются.
 
-### Эксперимент с reranker
+### Сравнение с reranker Task007
 
-Необязательный путь получает 20 лучших плотных фрагментов и сортирует их через `BAAI/bge-reranker-v2-m3`, возвращая top-5. Обычная команда `search` по-прежнему использует только плотный поиск. Для эксперимента из `backend/` выполните:
+Измерения Task007 показали улучшение ранних позиций и поиска нужной страницы; поэтому reranker принят как режим приложения. Историческое сравнение и диагностические команды сохранены. Из `backend/` выполните:
 
 ```powershell
 python -m app.retrieval.cli rerank-search "Какие вступительные испытания нужно сдавать?" --top-k 5
 python -m app.evaluation.cli compare-reranker
 ```
 
-Первая команда reranker скачает модель при наличии сети. В `.env` доступны `RERANKER_MODEL`, `RERANKER_DEVICE` (`auto`, `cpu`, `cuda`), `RERANKER_BATCH_SIZE` (1–64), `RERANKER_MAX_LENGTH` (32–4096), `RERANKER_CANDIDATE_K` (5–100); значения по умолчанию — `BAAI/bge-reranker-v2-m3`, `auto`, 8, 512, 20. Сравнение использует ровно 20 кандидатов и неизменный датасет 80 вопросов. Отчёты `data/processed/evaluation/reranker_comparison.json` и `.md` сопоставляют обе выдачи, предел top-20 и изменения рангов. Reranker только переставляет плотные кандидаты; его польза оценивается экспериментально, без изменения поиска по умолчанию.
+Первая команда reranker скачает модель при наличии сети. В `.env` доступны `RERANKER_MODEL`, `RERANKER_DEVICE` (`auto`, `cpu`, `cuda`), `RERANKER_BATCH_SIZE` (1–64), `RERANKER_MAX_LENGTH` (32–4096), `RERANKER_CANDIDATE_K` (5–100); значения по умолчанию — `BAAI/bge-reranker-v2-m3`, `auto`, 8, 512, 20. Сравнение использует ровно 20 кандидатов и неизменный датасет 80 вопросов. Отчёты `data/processed/evaluation/reranker_comparison.json` и `.md` сохраняют обе выдачи и изменения рангов. Архитектурное решение зафиксировано в `docs/decisions/0001-adopt-reranked-retrieval.md`.
 
 ## Frontend
 
