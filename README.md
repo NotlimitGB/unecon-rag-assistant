@@ -162,6 +162,8 @@ python -m app.evaluation.generation_cli run
 
 Итоги автоматического прогона сохраняются в `data/processed/evaluation/generation_report.json` и `.md`; все три файла игнорируются Git. После заполнения всех оценок выполните `python -m app.evaluation.generation_cli validate-review` и `python -m app.evaluation.generation_cli summarize-review`. Для явно неполного обзора используйте `summarize-review --partial`: он считает только полностью оценённые строки и показывает их число. Команды принимают `--dataset`, `--retrieval-dataset`, `--output-dir`; команды обзора также принимают `--review`. При отсутствии Ollama доступна проверка датасета, но реальные метрики генерации не создаются. До итогового представления результатов желательно вручную оценить все полученные поддерживаемые ответы. Метод описан в `docs/decisions/0003-generation-evaluation-method.md`.
 
+Первый реальный прогон 60 вопросов на `qwen3.5:9b` завершён; автоматические результаты записаны в `docs/evaluation/0001-generation-baseline.md`. Ручная оценка фактической точности и опоры ответов на источники ещё не проведена.
+
 ## Frontend
 
 В отдельном окне PowerShell из корня репозитория установите зависимости и запустите frontend:
