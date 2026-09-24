@@ -1,11 +1,13 @@
 """Run the fixed 80-question retrieval baseline from local artifacts."""
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from app.config import settings
+from app.evaluation.comparison import compare, write_comparison
 from app.evaluation.dataset import DatasetError, load_dataset, validate_page_labels
 from app.evaluation.runner import evaluate_retrieval, write_reports
 from app.ingestion.manifest import ManifestError, load_manifest
@@ -43,7 +45,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Evaluate dense retrieval over 80 questions")
-    parser.add_argument("command", choices=["retrieval"])
+    parser.add_argument("command", choices=["retrieval", "compare-reranker"])
     parser.add_argument(
         "--dataset", type=Path, default=PROJECT_ROOT / "data/evaluation/retrieval_questions.json"
     )
@@ -57,22 +59,87 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--device", choices=["auto", "cpu", "cuda"], default=settings.embedding_device
     )
     parser.add_argument("--batch-size", type=int, default=settings.embedding_batch_size)
+    parser.add_argument(
+        "--reranker-device", choices=["auto", "cpu", "cuda"], default=settings.reranker_device
+    )
+    parser.add_argument("--reranker-batch-size", type=int, default=settings.reranker_batch_size)
+    parser.add_argument("--reranker-max-length", type=int, default=settings.reranker_max_length)
+    parser.add_argument("--candidate-k", type=int, default=settings.reranker_candidate_k)
     args = parser.parse_args(argv)
     if not 1 <= args.batch_size <= 128:
         parser.error("--batch-size must be from 1 to 128")
+    if args.command == "compare-reranker" and (
+        args.candidate_k != 20
+        or not 1 <= args.reranker_batch_size <= 64
+        or not 32 <= args.reranker_max_length <= 4096
+    ):
+        parser.error("invalid reranker comparison options")
     try:
-        report = run_evaluation(
-            args.dataset,
-            args.manifest,
-            args.chunks_dir,
-            args.index_dir,
-            args.output_dir,
-            args.device,
-            args.batch_size,
-        )
+        if args.command == "retrieval":
+            report = run_evaluation(
+                args.dataset,
+                args.manifest,
+                args.chunks_dir,
+                args.index_dir,
+                args.output_dir,
+                args.device,
+                args.batch_size,
+            )
+        else:
+            manifest = load_manifest(args.manifest)
+            dataset = load_dataset(args.dataset, manifest)
+            with (args.index_dir / "metadata.json").open(encoding="utf-8") as handle:
+                page_metadata = json.load(handle)
+            try:
+                validate_page_labels(dataset, page_metadata["records"])
+            except (KeyError, TypeError) as exc:
+                raise RetrievalError(f"invalid local index metadata: {exc}") from exc
+            dense_session = RetrievalSession(
+                args.manifest,
+                args.chunks_dir,
+                args.index_dir,
+                settings.embedding_model,
+                args.device,
+                args.batch_size,
+            )
+            report, reranked_session = compare(
+                dataset,
+                dense_session,
+                model_name=settings.reranker_model,
+                device=args.reranker_device,
+                batch_size=args.reranker_batch_size,
+                max_length=args.reranker_max_length,
+                candidate_k=args.candidate_k,
+            )
+            write_comparison(report, args.output_dir)
     except (DatasetError, ManifestError, RetrievalError, OSError, ValueError, RuntimeError) as exc:
         print(f"FAILED: {exc}")
         return 1
+    if args.command == "compare-reranker":
+        print(
+            f"embedding_model={settings.embedding_model} "
+            f"embedding_device={dense_session.embedder.device}"
+        )
+        print(
+            f"reranker_model={settings.reranker_model} "
+            f"reranker_device={reranked_session.reranker.device}"
+        )
+        print(
+            f"candidate_k={args.candidate_k} final_k=5 "
+            f"questions={report['dataset']['question_count']} "
+            f"vectors={report['dense']['vector_count']} "
+            f"pairs={report['reranked']['pairs_scored']}"
+        )
+        for key, value in report["dense"]["metrics"].items():
+            if key != "page_labeled_questions":
+                print(
+                    f"{key}: dense={value:.4f} "
+                    f"reranked={report['reranked']['metrics'][key]:.4f} "
+                    f"delta={report['deltas'][key]:+.4f}"
+                )
+        print(f"report_json={args.output_dir / 'reranker_comparison.json'}")
+        print(f"report_md={args.output_dir / 'reranker_comparison.md'}")
+        return 0
     metrics = report["metrics"]
     print(f"dataset={report['dataset']['dataset_id']}")
     print(f"questions={report['dataset']['question_count']}")

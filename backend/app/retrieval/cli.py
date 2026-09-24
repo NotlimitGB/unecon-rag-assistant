@@ -7,7 +7,8 @@ from pathlib import Path
 
 from app.config import settings
 from app.retrieval.corpus import RetrievalError
-from app.retrieval.index import build_index, search
+from app.retrieval.index import RetrievalSession, build_index, search
+from app.retrieval.reranker import RerankedRetrievalSession
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
@@ -32,11 +33,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     search_parser = commands.add_parser("search", parents=[shared])
     search_parser.add_argument("question")
     search_parser.add_argument("--top-k", type=int, default=5)
+    rerank_parser = commands.add_parser("rerank-search", parents=[shared])
+    rerank_parser.add_argument("question")
+    rerank_parser.add_argument("--top-k", type=int, default=5)
+    rerank_parser.add_argument(
+        "--reranker-device", choices=["auto", "cpu", "cuda"], default=settings.reranker_device
+    )
+    rerank_parser.add_argument(
+        "--reranker-batch-size", type=int, default=settings.reranker_batch_size
+    )
+    rerank_parser.add_argument(
+        "--reranker-max-length", type=int, default=settings.reranker_max_length
+    )
+    rerank_parser.add_argument("--candidate-k", type=int, default=settings.reranker_candidate_k)
     args = parser.parse_args(argv)
     if args.batch_size < 1 or args.batch_size > 128:
         parser.error("--batch-size must be from 1 to 128")
     if args.command == "search" and (args.top_k < 1 or args.top_k > 50):
         parser.error("--top-k must be from 1 to 50")
+    if args.command == "rerank-search" and (
+        not 5 <= args.candidate_k <= 100
+        or not 1 <= args.top_k <= min(5, args.candidate_k)
+        or not 1 <= args.reranker_batch_size <= 64
+        or not 32 <= args.reranker_max_length <= 4096
+    ):
+        parser.error("invalid reranker options")
     try:
         if args.command == "build-index":
             metadata = build_index(
@@ -52,6 +73,31 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"dimension={metadata['embedding']['dimension']} "
                 f"sources={len(metadata['corpus']['sources'])}"
             )
+        elif args.command == "rerank-search":
+            dense = RetrievalSession(
+                args.manifest,
+                args.chunks_dir,
+                args.index_dir,
+                settings.embedding_model,
+                args.device,
+                args.batch_size,
+            )
+            session = RerankedRetrievalSession(
+                dense,
+                settings.reranker_model,
+                args.reranker_device,
+                args.reranker_batch_size,
+                args.reranker_max_length,
+                args.candidate_k,
+            )
+            for rank, result in enumerate(session.search(args.question, args.top_k), 1):
+                page = result["page_start"] if result["page_start"] is not None else "-"
+                print(
+                    f"{rank}. rerank_score={result['rerank_score']:.6f} "
+                    f"dense_rank={result['dense_rank']} dense_score={result['dense_score']:.6f}"
+                )
+                print(f"   source={result['source_id']} page={page} chunk_id={result['chunk_id']}")
+                print(f"   text={result['text'][:240].replace(chr(10), ' ')}")
         else:
             results = search(
                 args.question,

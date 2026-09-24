@@ -119,6 +119,17 @@ python -m app.evaluation.cli retrieval
 
 Команда принимает `--dataset`, `--manifest`, `--chunks-dir`, `--index-dir`, `--output-dir`, `--device` и `--batch-size`. По умолчанию отчеты сохраняются в `data/processed/evaluation/retrieval_report.json` и `retrieval_report.md`; они не отслеживаются Git. Оценка считает Primary Recall@1/3/5 и Primary MRR@5, а также диагностические Accepted и PDF Page Recall/MRR и разбивки по категориям и сложности. Модель BGE-M3 загружается один раз на весь прогон. Оценивается только выдача фрагментов: ранжирование в этом этапе не настраивается, ответы не генерируются.
 
+### Эксперимент с reranker
+
+Необязательный путь получает 20 лучших плотных фрагментов и сортирует их через `BAAI/bge-reranker-v2-m3`, возвращая top-5. Обычная команда `search` по-прежнему использует только плотный поиск. Для эксперимента из `backend/` выполните:
+
+```powershell
+python -m app.retrieval.cli rerank-search "Какие вступительные испытания нужно сдавать?" --top-k 5
+python -m app.evaluation.cli compare-reranker
+```
+
+Первая команда reranker скачает модель при наличии сети. В `.env` доступны `RERANKER_MODEL`, `RERANKER_DEVICE` (`auto`, `cpu`, `cuda`), `RERANKER_BATCH_SIZE` (1–64), `RERANKER_MAX_LENGTH` (32–4096), `RERANKER_CANDIDATE_K` (5–100); значения по умолчанию — `BAAI/bge-reranker-v2-m3`, `auto`, 8, 512, 20. Сравнение использует ровно 20 кандидатов и неизменный датасет 80 вопросов. Отчёты `data/processed/evaluation/reranker_comparison.json` и `.md` сопоставляют обе выдачи, предел top-20 и изменения рангов. Reranker только переставляет плотные кандидаты; его польза оценивается экспериментально, без изменения поиска по умолчанию.
+
 ## Frontend
 
 В отдельном окне PowerShell из корня репозитория установите зависимости и запустите frontend:
