@@ -12,11 +12,14 @@ from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession, build_index, search
 from app.retrieval.reranker import RerankedRetrievalSession
 from app.retrieval.service import RetrievalService
+from app.retrieval.table_index import build_table_index
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
 DEFAULT_CHUNKS_DIR = PROJECT_ROOT / "data" / "processed" / "chunks"
 DEFAULT_INDEX_DIR = PROJECT_ROOT / "data" / "processed" / "index"
+DEFAULT_PDF_ROOT = PROJECT_ROOT / "data" / "processed" / "pdf"
+DEFAULT_TABLE_INDEX_DIR = PROJECT_ROOT / "data" / "processed" / "table_index"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -27,12 +30,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     shared.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     shared.add_argument("--chunks-dir", type=Path, default=DEFAULT_CHUNKS_DIR)
     shared.add_argument("--index-dir", type=Path, default=DEFAULT_INDEX_DIR)
+    shared.add_argument("--pdf-root", type=Path, default=DEFAULT_PDF_ROOT)
+    shared.add_argument("--table-index-dir", type=Path, default=DEFAULT_TABLE_INDEX_DIR)
     shared.add_argument(
         "--device", choices=["auto", "cpu", "cuda"], default=settings.embedding_device
     )
     shared.add_argument("--batch-size", type=int, default=settings.embedding_batch_size)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("build-index", parents=[shared])
+    commands.add_parser("build-table-index", parents=[shared])
     search_parser = commands.add_parser("search", parents=[shared])
     search_parser.add_argument("question")
     search_parser.add_argument("--top-k", type=int, default=5)
@@ -81,6 +87,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"dimension={metadata['embedding']['dimension']} "
                 f"sources={len(metadata['corpus']['sources'])}"
             )
+        elif args.command == "build-table-index":
+            metadata = build_table_index(
+                args.manifest,
+                args.chunks_dir,
+                args.index_dir,
+                args.pdf_root,
+                args.table_index_dir,
+                settings.embedding_model,
+                args.device,
+                args.batch_size,
+            )
+            print(
+                f"OK table_vectors={metadata['index']['vector_count']} "
+                f"dimension={metadata['embedding']['dimension']} "
+                f"sources={len(metadata['sources'])}"
+            )
         elif args.command == "rerank-search":
             dense = RetrievalSession(
                 args.manifest,
@@ -119,6 +141,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 manifest_path=args.manifest,
                 chunks_dir=args.chunks_dir,
                 index_dir=args.index_dir,
+                pdf_root=args.pdf_root,
+                table_index_dir=args.table_index_dir,
             )
             if args.json:
                 with redirect_stdout(io.StringIO()):

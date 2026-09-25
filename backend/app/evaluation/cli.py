@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from app.config import settings
+from app.evaluation.canonical import run_canonical_evaluation
 from app.evaluation.comparison import compare, write_comparison
 from app.evaluation.dataset import DatasetError, load_dataset, validate_page_labels
 from app.evaluation.runner import evaluate_retrieval, write_reports
@@ -45,13 +46,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Evaluate dense retrieval over 80 questions")
-    parser.add_argument("command", choices=["retrieval", "compare-reranker"])
+    parser.add_argument("command", choices=["retrieval", "compare-reranker", "canonical-retrieval"])
     parser.add_argument(
         "--dataset", type=Path, default=PROJECT_ROOT / "data/evaluation/retrieval_questions.json"
     )
     parser.add_argument("--manifest", type=Path, default=PROJECT_ROOT / "data/source_manifest.json")
     parser.add_argument("--chunks-dir", type=Path, default=PROJECT_ROOT / "data/processed/chunks")
     parser.add_argument("--index-dir", type=Path, default=PROJECT_ROOT / "data/processed/index")
+    parser.add_argument("--pdf-root", type=Path, default=PROJECT_ROOT / "data/processed/pdf")
+    parser.add_argument(
+        "--table-index-dir", type=Path, default=PROJECT_ROOT / "data/processed/table_index"
+    )
+    parser.add_argument(
+        "--task018-report",
+        type=Path,
+        default=PROJECT_ROOT
+        / "data/processed/evaluation/pdf_page_diversity_retrieval_experiment.json",
+    )
     parser.add_argument(
         "--output-dir", type=Path, default=PROJECT_ROOT / "data/processed/evaluation"
     )
@@ -74,6 +85,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         or not 32 <= args.reranker_max_length <= 4096
     ):
         parser.error("invalid reranker comparison options")
+    if args.command == "canonical-retrieval" and (
+        not 1 <= args.reranker_batch_size <= 64 or not 32 <= args.reranker_max_length <= 4096
+    ):
+        parser.error("invalid reranker options")
     try:
         if args.command == "retrieval":
             report = run_evaluation(
@@ -84,6 +99,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.output_dir,
                 args.device,
                 args.batch_size,
+            )
+        elif args.command == "canonical-retrieval":
+            report = run_canonical_evaluation(
+                args.dataset,
+                args.manifest,
+                args.chunks_dir,
+                args.index_dir,
+                args.pdf_root,
+                args.table_index_dir,
+                args.task018_report,
+                args.output_dir,
+                device=args.device,
+                batch_size=args.batch_size,
+                reranker_device=args.reranker_device,
+                reranker_batch_size=args.reranker_batch_size,
+                reranker_max_length=args.reranker_max_length,
             )
         else:
             manifest = load_manifest(args.manifest)
@@ -115,6 +146,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (DatasetError, ManifestError, RetrievalError, OSError, ValueError, RuntimeError) as exc:
         print(f"FAILED: {exc}")
         return 1
+    if args.command == "canonical-retrieval":
+        print(f"migration_matches={report['migration_matches']}/80")
+        for label, metrics in report["metrics"].items():
+            print(
+                f"{label}={metrics['hits_at_1']}/{metrics['denominator']},"
+                f"{metrics['hits_at_3']}/{metrics['denominator']},"
+                f"{metrics['hits_at_5']}/{metrics['denominator']} "
+                f"mrr_at_5={metrics['mrr_at_5']:.4f}"
+            )
+        print(f"report_json={args.output_dir / 'canonical_retrieval.json'}")
+        print(f"report_md={args.output_dir / 'canonical_retrieval.md'}")
+        return 0
     if args.command == "compare-reranker":
         print(
             f"embedding_model={settings.embedding_model} "

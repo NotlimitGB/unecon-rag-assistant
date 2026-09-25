@@ -11,7 +11,7 @@ from app.config import Settings, settings
 from app.ingestion.models import validate_official_url
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession
-from app.retrieval.reranker import RerankedRetrievalSession
+from app.retrieval.table_session import TableAwareRerankedRetrievalSession
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RetrievalMode = Literal["dense", "reranked"]
@@ -105,6 +105,8 @@ class RetrievalService:
         index_dir: Path = PROJECT_ROOT / "data/processed/index",
         dense_factory: Callable[[], SearchSession] | None = None,
         reranked_factory: Callable[[SearchSession], SearchSession] | None = None,
+        pdf_root: Path = PROJECT_ROOT / "data/processed/pdf",
+        table_index_dir: Path = PROJECT_ROOT / "data/processed/table_index",
     ):
         self.config = config or settings
         self.mode = mode if mode is not None else self.config.retrieval_mode
@@ -113,6 +115,8 @@ class RetrievalService:
         self.manifest_path = manifest_path
         self.chunks_dir = chunks_dir
         self.index_dir = index_dir
+        self.pdf_root = pdf_root
+        self.table_index_dir = table_index_dir
         self._dense_factory = dense_factory
         self._reranked_factory = reranked_factory
         self._dense_session: SearchSession | None = None
@@ -139,8 +143,12 @@ class RetrievalService:
                 self._reranked_session = (
                     self._reranked_factory(self._dense_session)
                     if self._reranked_factory is not None
-                    else RerankedRetrievalSession(
+                    else TableAwareRerankedRetrievalSession(
                         self._dense_session,
+                        self.manifest_path,
+                        self.pdf_root,
+                        self.table_index_dir,
+                        self.config.embedding_model,
                         self.config.reranker_model,
                         self.config.reranker_device,
                         self.config.reranker_batch_size,
@@ -157,8 +165,11 @@ class RetrievalService:
             raise RetrievalError("question must be a non-empty string")
         query = question.strip()
         count = self.config.retrieval_top_k if top_k is None else top_k
-        if type(count) is not int or not 1 <= count <= min(20, self.config.reranker_candidate_k):
-            raise RetrievalError("top_k must be from 1 to the configured candidate limit")
+        limit = 20 if self.mode == "dense" else 5
+        if type(count) is not int or not 1 <= count <= limit:
+            raise RetrievalError(f"top_k must be from 1 to {limit} in {self.mode} mode")
+        if self.mode == "reranked" and self.config.reranker_candidate_k != 20:
+            raise RetrievalError("canonical reranked retrieval requires RERANKER_CANDIDATE_K=20")
         session = self._session()
         try:
             hits = session.search(query, count)

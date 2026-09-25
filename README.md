@@ -100,14 +100,19 @@ python -m app.chunking.cli build --source-id admission-rules-pdf
 python -m app.ingestion.cli fetch
 python -m app.chunking.cli build
 python -m app.retrieval.cli build-index
+python -m app.retrieval.cli build-table-index
 python -m app.retrieval.cli retrieve "Какие вступительные испытания нужно сдавать?"
 ```
 
 Первая сборка загрузит модель `BAAI/bge-m3` из Hugging Face; для этого нужен доступ к сети и свободное место для кеша. GPU необязателен: `EMBEDDING_DEVICE=auto` использует CUDA при наличии, иначе CPU. В `.env` можно задать `EMBEDDING_MODEL`, `EMBEDDING_DEVICE` (`auto`, `cpu`, `cuda`) и `EMBEDDING_BATCH_SIZE` (1–128). CLI также принимает `--manifest`, `--chunks-dir`, `--index-dir`, `--device`, `--batch-size`; поиск ограничивает `--top-k` диапазоном 1–50.
 
-Индекс и метаданные сохраняются в `data/processed/index/index.faiss` и `metadata.json`. Поиск проверяет хеш индекса и актуальность всех чанков; после изменения источников или чанков соберите индекс заново. По умолчанию сервис получает плотные top-20, оценивает их моделью `BAAI/bge-reranker-v2-m3` и возвращает top-5 с текстом, официальным URL и страницей PDF. Он повторно использует загруженные индекс и модели между запросами одного экземпляра. Результат содержит исходный `dense_score` и итоговый `rerank_score`.
+Основной индекс сохраняется в `data/processed/index/`, а отдельный индекс строк таблиц — в `data/processed/table_index/`. Сборка второго индекса запрашивает исходные PDF через защищённый загрузчик: геометрия таблиц отсутствует в нормализованном тексте. Сейчас она обрабатывает только `admission-capacity-pdf`, `entrance-exams-list-pdf` и `tuition-order-128-pdf`. При запросе к официальному сайту обращений нет. Индекс таблиц сверяется с хешами нормализованных PDF и основного индекса; устаревший или повреждённый индекс вызывает явную ошибку.
 
-В `.env` доступны `RETRIEVAL_MODE=reranked` (`reranked` или `dense`) и `RETRIEVAL_TOP_K=5` (1–20). Если reranker недоступен, поиск завершается ошибкой без автоматического перехода на плотный режим. Для отдельного вызова используйте `retrieve "вопрос" --mode dense` или `--mode reranked`; `--top-k N` меняет число результатов, а `--json` печатает только типизированный JSON-ответ. `source_url` в нём — конечный проверенный адрес официального источника; внутренний ID вектора не выводится.
+Основной режим получает top‑20 из обычного индекса и top‑5 из индекса таблиц, ранжирует все 25 прежней моделью `BAAI/bge-reranker-v2-m3` и выбирает до пяти результатов, допуская не более двух с одной страницы PDF. Он повторно использует индексы и модели между запросами одного экземпляра. Результат содержит исходный `dense_score` и итоговый `rerank_score`.
+
+Основание принятия этой схемы — [ADR 0004](docs/decisions/0004-adopt-table-aware-diversity-retrieval.md); результаты миграции — в [отчёте Task021](docs/evaluation/0010-production-retrieval-adoption.md).
+
+В `.env` доступны `RETRIEVAL_MODE=reranked` (`reranked` или `dense`) и `RETRIEVAL_TOP_K=5`. В основном режиме `top_k` допускает 1–5 и требует `RERANKER_CANDIDATE_K=20`; в явном `dense` — 1–20. При недоступности индекса таблиц или reranker основной режим завершается ошибкой без автоматического перехода на dense. Для отдельного вызова используйте `retrieve "вопрос" --mode dense` или `--mode reranked`; `--json` печатает прежний типизированный JSON-ответ. `source_url` в нём — конечный проверенный адрес официального источника; внутренний ID вектора не выводится.
 
 ### Диагностический плотный поиск
 
@@ -121,13 +126,14 @@ python -m app.retrieval.cli retrieve "Какие вступительные ис
 
 ```powershell
 python -m app.evaluation.cli retrieval
+python -m app.evaluation.cli canonical-retrieval
 ```
 
-Команда принимает `--dataset`, `--manifest`, `--chunks-dir`, `--index-dir`, `--output-dir`, `--device` и `--batch-size`. По умолчанию отчеты сохраняются в `data/processed/evaluation/retrieval_report.json` и `retrieval_report.md`; они не отслеживаются Git. Оценка считает Primary Recall@1/3/5 и Primary MRR@5, а также диагностические Accepted и PDF Page Recall/MRR и разбивки по категориям и сложности. Модель BGE-M3 загружается один раз на весь прогон. Оценивается только выдача фрагментов: ранжирование в этом этапе не настраивается, ответы не генерируются.
+Первая команда сохраняет историческую плотную оценку. Вторая оценивает текущий `RetrievalService` на тех же 80 вопросах и сравнивает каждый итоговый top‑5 с локальным отчётом Task018. Её JSON и Markdown сохраняются в игнорируемом `data/processed/evaluation/`; для воспроизведения миграции требуется локальный отчёт Task018. Ответы не генерируются.
 
 ### Сравнение с reranker Task007
 
-Измерения Task007 показали улучшение ранних позиций и поиска нужной страницы; поэтому reranker принят как режим приложения. Историческое сравнение и диагностические команды сохранены. Из `backend/` выполните:
+Историческое сравнение Task007 и команда `rerank-search` используют только основные чанки и не являются текущим путём приложения. Из `backend/` выполните:
 
 ```powershell
 python -m app.retrieval.cli rerank-search "Какие вступительные испытания нужно сдавать?" --top-k 5
