@@ -9,7 +9,7 @@ import pytest
 
 from app.chunking.core import build_chunk_artifact
 from app.config import Settings
-from app.ingestion.models import Source
+from app.ingestion.models import Source, source_identity
 from app.retrieval.cli import main
 from app.retrieval.corpus import RetrievalError, load_corpus
 from app.retrieval.index import RetrievalSession, build_index, search
@@ -21,21 +21,35 @@ def digest(text: str) -> str:
 
 HTML = Source(
     id="faq",
+    logical_document_id="faq",
     title="Вопросы",
     url="https://unecon.ru/faq/",
     source_type="html",
     category="faq",
     admission_year=2026,
-    active=True,
+    status="active",
+    version=1,
+    supersedes=None,
+    published_at=None,
+    effective_from=None,
+    effective_to=None,
+    processing={"table_aware": False},
 )
 PDF = Source(
     id="rules",
+    logical_document_id="rules",
     title="Правила",
     url="https://unecon.ru/rules.pdf",
     source_type="pdf",
     category="rules",
     admission_year=2026,
-    active=True,
+    status="active",
+    version=1,
+    supersedes=None,
+    published_at=None,
+    effective_from=None,
+    effective_to=None,
+    processing={"table_aware": False},
 )
 
 
@@ -51,8 +65,12 @@ def normalized(source: Source, pages: list[str]) -> dict:
             }
         )
     return {
-        "schema_version": 1,
-        "source": {**source.model_dump(exclude={"active"}), "final_url": source.url},
+        "schema_version": 2,
+        "source": {
+            **source_identity(source),
+            "final_url": source.url,
+            "snapshot_sha256": digest("pdf bytes"),
+        },
         "document": document,
     }
 
@@ -63,7 +81,7 @@ def corpus(tmp_path: Path):
     chunks_dir = tmp_path / "chunks"
     chunks_dir.mkdir()
     manifest.write_text(
-        json.dumps({"schema_version": 1, "sources": [HTML.model_dump(), PDF.model_dump()]}),
+        json.dumps({"schema_version": 2, "sources": [HTML.model_dump(), PDF.model_dump()]}),
         encoding="utf-8",
     )
     artifacts = {

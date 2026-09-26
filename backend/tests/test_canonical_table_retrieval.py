@@ -13,7 +13,7 @@ from app.generation.service import AnswerService
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.service import RetrievalResponse, RetrievedChunk
 from app.retrieval.table_extract import row_id
-from app.retrieval.table_index import TABLE_SOURCE_IDS, build_table_index, validated_table_index
+from app.retrieval.table_index import _sources, build_table_index, validated_table_index
 from app.retrieval.table_session import (
     TableAwareRerankedRetrievalSession,
     select_pdf_page_diversity,
@@ -32,7 +32,11 @@ def candidate(number, *, source="capacity", page=1, source_type="pdf"):
 
 
 def test_approved_table_scope_is_frozen():
-    assert TABLE_SOURCE_IDS == (
+    from pathlib import Path
+
+    assert tuple(
+        s.id for s in _sources(Path(__file__).resolve().parents[2] / "data/source_manifest.json")
+    ) == (
         "admission-capacity-pdf",
         "entrance-exams-list-pdf",
         "tuition-order-128-pdf",
@@ -193,10 +197,12 @@ def test_offline_builder_and_strict_local_index_validation(monkeypatch, tmp_path
 
     pdf = b"%PDF-deterministic-test"
     pdf_sha = hashlib.sha256(pdf).hexdigest()
-    source_ids = table_module.TABLE_SOURCE_IDS
+    source_ids = ("admission-capacity-pdf", "entrance-exams-list-pdf", "tuition-order-128-pdf")
     sources = [
         SimpleNamespace(
             id=sid,
+            logical_document_id=sid,
+            version=1,
             title=sid,
             url=f"https://unecon.ru/{sid}.pdf",
             source_type="pdf",
@@ -218,14 +224,14 @@ def test_offline_builder_and_strict_local_index_validation(monkeypatch, tmp_path
         table_module,
         "_normalized",
         lambda source, _root: (
-            {"source": {"final_url": source.url}},
+            {"source": {"final_url": source.url, "snapshot_sha256": pdf_sha}},
             {"file_sha256": pdf_sha, "page_count": 1, "content_sha256": "b" * 64},
         ),
     )
     monkeypatch.setattr(
         table_module,
-        "fetch_pdf",
-        lambda source, _client: SimpleNamespace(content=pdf, final_url=source.url),
+        "read_pair",
+        lambda source, *_args: ({}, pdf),
     )
 
     def extract(source, final_url, content):
@@ -269,22 +275,19 @@ def test_offline_builder_and_strict_local_index_validation(monkeypatch, tmp_path
         table_dir,
         "test",
         embedder_factory=Embedder,
-        client=object(),
+        originals_root=tmp_path,
     )
     assert [record["vector_id"] for record in metadata["records"]] == [20, 21, 22]
     index, records = validated_table_index(tmp_path, tmp_path, table_dir, production_meta, "test")
     assert index.ntotal == len(records) == 3
     saved_index = (table_dir / "index.faiss").read_bytes()
     saved_metadata = (table_dir / "metadata.json").read_bytes()
-    monkeypatch.setattr(
-        table_module,
-        "fetch_pdf",
-        lambda source, _client: SimpleNamespace(
-            content=b"%PDF-changed" if source.id == source_ids[1] else pdf,
-            final_url=source.url,
-        ),
-    )
-    with pytest.raises(RetrievalError, match="official PDF changed"):
+
+    def bad_snapshot(*_args):
+        raise ValueError("snapshot SHA-256 mismatch")
+
+    monkeypatch.setattr(table_module, "read_pair", bad_snapshot)
+    with pytest.raises(RetrievalError, match="snapshot"):
         build_table_index(
             tmp_path,
             tmp_path,
@@ -293,7 +296,7 @@ def test_offline_builder_and_strict_local_index_validation(monkeypatch, tmp_path
             table_dir,
             "test",
             embedder_factory=lambda: pytest.fail("model initialized before PDF validation"),
-            client=object(),
+            originals_root=tmp_path,
         )
     assert (table_dir / "index.faiss").read_bytes() == saved_index
     assert (table_dir / "metadata.json").read_bytes() == saved_metadata

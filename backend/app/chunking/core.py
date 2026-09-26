@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.ingestion.manifest import load_manifest
-from app.ingestion.models import Source, validate_official_url
+from app.ingestion.models import Source, source_identity, validate_official_url
 from app.ingestion.writer import write_document
 
 ALGORITHM = "paragraph-aware-v1"
@@ -53,15 +53,18 @@ def _validate_hash(value: Any, label: str) -> str:
 
 
 def validate_normalized_document(source: Source, artifact: Any) -> dict[str, Any]:
-    """Validate the Task002/003 artifact contract and return its document object."""
+    """Validate the v2 version-bound artifact and return its document object."""
     root = _required_dict(artifact, "artifact")
     _require_exact_keys(root, {"schema_version", "source", "document"}, "artifact")
-    if type(root["schema_version"]) is not int or root["schema_version"] != 1:
+    if type(root["schema_version"]) is not int or root["schema_version"] != 2:
         raise ChunkingError("unsupported normalized document schema_version")
 
     source_data = _required_dict(root["source"], "source")
     expected_source_keys = {
         "id",
+        "logical_document_id",
+        "version",
+        "snapshot_sha256",
         "title",
         "url",
         "source_type",
@@ -70,9 +73,13 @@ def validate_normalized_document(source: Source, artifact: Any) -> dict[str, Any
         "final_url",
     }
     _require_exact_keys(source_data, expected_source_keys, "source")
-    expected_source = source.model_dump(exclude={"active"})
+    _validate_hash(source_data["snapshot_sha256"], "source.snapshot_sha256")
+    expected_source = source_identity(source)
     for key, expected_value in expected_source.items():
-        if source_data.get(key) != expected_value:
+        if (
+            type(source_data.get(key)) is not type(expected_value)
+            or source_data[key] != expected_value
+        ):
             raise ChunkingError(f"source metadata mismatch for {key}")
     if not isinstance(source_data["final_url"], str):
         raise ChunkingError("source.final_url must be a string")
@@ -106,6 +113,8 @@ def validate_normalized_document(source: Source, artifact: Any) -> dict[str, Any
         if document["title"] != source.title:
             raise ChunkingError("PDF document title does not match manifest title")
         _validate_hash(document["file_sha256"], "document.file_sha256")
+        if document["file_sha256"] != source_data["snapshot_sha256"]:
+            raise ChunkingError("PDF snapshot and file hashes differ")
         pages = document["pages"]
         if not isinstance(pages, list) or type(document["page_count"]) is not int:
             raise ChunkingError("PDF pages and page_count have invalid types")
@@ -236,7 +245,7 @@ def build_chunk_artifact(source: Source, normalized: Any) -> dict[str, Any]:
             )
 
     artifact = {
-        "schema_version": 1,
+        "schema_version": 2,
         "chunking": {
             "algorithm": ALGORITHM,
             "max_chunk_chars": MAX_CHARS,
@@ -244,13 +253,9 @@ def build_chunk_artifact(source: Source, normalized: Any) -> dict[str, Any]:
             "pdf_cross_page_chunks": False,
         },
         "source": {
-            "id": source.id,
-            "title": source.title,
-            "url": source.url,
+            **source_identity(source),
+            "snapshot_sha256": normalized["source"]["snapshot_sha256"],
             "final_url": normalized["source"]["final_url"],
-            "source_type": source.source_type,
-            "category": source.category,
-            "admission_year": source.admission_year,
             "content_sha256": document_hash,
             "file_sha256": document.get("file_sha256"),
         },
@@ -266,7 +271,7 @@ def validate_chunk_artifact(
     """Check chunk limits, hashes, IDs, page boundaries, and lossless source coverage."""
     root = _required_dict(artifact, "chunk artifact")
     _require_exact_keys(root, {"schema_version", "chunking", "source", "chunks"}, "chunk artifact")
-    if type(root["schema_version"]) is not int or root["schema_version"] != 1:
+    if type(root["schema_version"]) is not int or root["schema_version"] != 2:
         raise ChunkingError("unsupported chunk artifact schema_version")
     chunking = _required_dict(root["chunking"], "chunking metadata")
     _require_exact_keys(
@@ -294,6 +299,9 @@ def validate_chunk_artifact(
         chunk_source,
         {
             "id",
+            "logical_document_id",
+            "version",
+            "snapshot_sha256",
             "title",
             "url",
             "final_url",
@@ -305,10 +313,14 @@ def validate_chunk_artifact(
         },
         "chunk artifact source",
     )
+    _validate_hash(chunk_source["snapshot_sha256"], "source.snapshot_sha256")
     if chunk_source.get("id") != source.id:
         raise ChunkingError("chunk artifact source id mismatch")
-    for key, expected_value in source.model_dump(exclude={"active"}).items():
-        if chunk_source.get(key) != expected_value:
+    for key, expected_value in source_identity(source).items():
+        if (
+            type(chunk_source.get(key)) is not type(expected_value)
+            or chunk_source[key] != expected_value
+        ):
             raise ChunkingError(f"chunk artifact source metadata mismatch for {key}")
     if not isinstance(chunk_source["final_url"], str):
         raise ChunkingError("chunk artifact final_url must be a string")
@@ -330,6 +342,8 @@ def validate_chunk_artifact(
             raise ChunkingError("HTML source.file_sha256 must be null")
     else:
         _validate_hash(chunk_source["file_sha256"], "source.file_sha256")
+        if chunk_source["file_sha256"] != chunk_source["snapshot_sha256"]:
+            raise ChunkingError("PDF snapshot and file hashes differ")
     chunk_list = root["chunks"]
     if not isinstance(chunk_list, list) or not chunk_list:
         raise ChunkingError("chunk artifact must contain at least one chunk")

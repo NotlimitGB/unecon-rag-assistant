@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from app.config import settings
+from app.ingestion.snapshots import DEFAULT_ORIGINALS_ROOT
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession, build_index, search
 from app.retrieval.reranker import RerankedRetrievalSession
@@ -30,6 +31,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     shared.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     shared.add_argument("--chunks-dir", type=Path, default=DEFAULT_CHUNKS_DIR)
     shared.add_argument("--index-dir", type=Path, default=DEFAULT_INDEX_DIR)
+    shared.add_argument("--originals-root", type=Path, default=DEFAULT_ORIGINALS_ROOT)
     shared.add_argument("--pdf-root", type=Path, default=DEFAULT_PDF_ROOT)
     shared.add_argument("--table-index-dir", type=Path, default=DEFAULT_TABLE_INDEX_DIR)
     shared.add_argument(
@@ -97,6 +99,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 settings.embedding_model,
                 args.device,
                 args.batch_size,
+                originals_root=args.originals_root,
             )
             print(
                 f"OK table_vectors={metadata['index']['vector_count']} "

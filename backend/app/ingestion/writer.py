@@ -9,18 +9,21 @@ from typing import Any
 
 from app.ingestion.errors import IngestionError
 from app.ingestion.html import ExtractedDocument
-from app.ingestion.models import Source
+from app.ingestion.models import Source, source_identity
 from app.ingestion.pdf import ExtractedPdf
 
 
-def build_document(source: Source, final_url: str, extracted: ExtractedDocument) -> dict[str, Any]:
+def build_document(
+    source: Source, final_url: str, extracted: ExtractedDocument, snapshot: bytes
+) -> dict[str, Any]:
     if not extracted.text.strip():
         raise IngestionError("HTML page has no meaningful text")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": {
-            **source.model_dump(exclude={"active"}),
+            **source_identity(source),
             "final_url": final_url,
+            "snapshot_sha256": hashlib.sha256(snapshot).hexdigest(),
         },
         "document": {
             "title": extracted.title,
@@ -34,10 +37,11 @@ def build_pdf_document(
     source: Source, final_url: str, pdf_bytes: bytes, extracted: ExtractedPdf
 ) -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": {
-            **source.model_dump(exclude={"active"}),
+            **source_identity(source),
             "final_url": final_url,
+            "snapshot_sha256": hashlib.sha256(pdf_bytes).hexdigest(),
         },
         "document": {
             "title": source.title,

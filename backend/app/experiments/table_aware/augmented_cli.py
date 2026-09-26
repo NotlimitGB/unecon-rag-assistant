@@ -57,7 +57,9 @@ def _sha(path: Path) -> str:
 
 def _verified_tables(manifest: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     sources = [source for source in manifest.sources if source.id in TARGET_IDS]
-    if tuple(source.id for source in sources) != TARGET_IDS or not all(s.active for s in sources):
+    if tuple(source.id for source in sources) != TARGET_IDS or not all(
+        s.is_active for s in sources
+    ):
         raise ExperimentError("target PDF sources changed")
     checked = []
     with httpx.Client(timeout=60) as client:

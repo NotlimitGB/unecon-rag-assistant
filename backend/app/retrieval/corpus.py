@@ -11,6 +11,7 @@ from app.chunking.core import (
     validate_chunk_artifact,
 )
 from app.ingestion.manifest import load_manifest
+from app.ingestion.models import active_sources
 
 
 class RetrievalError(ValueError):
@@ -60,9 +61,7 @@ def load_corpus(
         fingerprints: list[dict[str, Any]] = []
         records: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
-        for source in manifest.sources:
-            if not source.active:
-                continue
+        for source in active_sources(manifest):
             path = chunks_dir / f"{source.id}.json"
             with path.open(encoding="utf-8") as handle:
                 artifact = json.load(handle)
@@ -87,6 +86,9 @@ def load_corpus(
             fingerprints.append(
                 {
                     "source_id": source.id,
+                    "logical_document_id": source.logical_document_id,
+                    "version": source.version,
+                    "snapshot_sha256": metadata["snapshot_sha256"],
                     "content_sha256": metadata["content_sha256"],
                     "file_sha256": metadata["file_sha256"],
                     "chunk_count": len(chunks),

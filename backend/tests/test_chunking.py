@@ -18,43 +18,59 @@ from app.chunking.core import (
     validate_chunk_artifact,
     validate_normalized_document,
 )
-from app.ingestion.models import Source
+from app.ingestion.models import Source, source_identity
 
 HTML_SOURCE = Source.model_validate(
     {
         "id": "admissions-faq",
+        "logical_document_id": "admissions-faq",
         "title": "Вопросы и ответы",
         "url": "https://unecon.ru/priem/vopros-otvet/",
         "source_type": "html",
         "category": "faq",
         "admission_year": 2026,
-        "active": True,
+        "status": "active",
+        "version": 1,
+        "supersedes": None,
+        "published_at": None,
+        "effective_from": None,
+        "effective_to": None,
+        "processing": {"table_aware": False},
     }
 )
 PDF_SOURCE = Source.model_validate(
     {
         "id": "admission-capacity-pdf",
+        "logical_document_id": "admission-capacity-pdf",
         "title": "Количество мест для приема",
         "url": "https://unecon.ru/places.pdf",
         "source_type": "pdf",
         "category": "admission_capacity",
         "admission_year": 2026,
-        "active": True,
+        "status": "active",
+        "version": 1,
+        "supersedes": None,
+        "published_at": None,
+        "effective_from": None,
+        "effective_to": None,
+        "processing": {"table_aware": False},
     }
 )
 INACTIVE_SOURCE = Source.model_validate(
     {
         **HTML_SOURCE.model_dump(),
         "id": "inactive-page",
+        "logical_document_id": "inactive-page",
         "title": "Неактивный источник",
         "url": "https://unecon.ru/inactive/",
-        "active": False,
+        "status": "draft",
     }
 )
 MISSING_SOURCE = Source.model_validate(
     {
         **HTML_SOURCE.model_dump(),
         "id": "missing-document",
+        "logical_document_id": "missing-document",
         "title": "Отсутствующий документ",
         "url": "https://unecon.ru/missing/",
     }
@@ -67,10 +83,11 @@ def _hash(text: str) -> str:
 
 def html_document(text: str, source: Source = HTML_SOURCE) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": {
-            **source.model_dump(exclude={"active"}),
+            **source_identity(source),
             "final_url": source.url,
+            "snapshot_sha256": hashlib.sha256(b"synthetic-pdf").hexdigest(),
         },
         "document": {
             "title": "Часто задаваемые вопросы",
@@ -83,10 +100,11 @@ def html_document(text: str, source: Source = HTML_SOURCE) -> dict:
 def pdf_document(page_texts: list[str], source: Source = PDF_SOURCE) -> dict:
     text = "\n\n\f\n\n".join(page for page in page_texts if page)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": {
-            **source.model_dump(exclude={"active"}),
+            **source_identity(source),
             "final_url": source.url,
+            "snapshot_sha256": hashlib.sha256(b"synthetic-pdf").hexdigest(),
         },
         "document": {
             "title": source.title,
@@ -105,7 +123,7 @@ def pdf_document(page_texts: list[str], source: Source = PDF_SOURCE) -> dict:
 def write_manifest(path: Path, sources: list[Source]) -> Path:
     path.write_text(
         json.dumps(
-            {"schema_version": 1, "sources": [source.model_dump() for source in sources]},
+            {"schema_version": 2, "sources": [source.model_dump() for source in sources]},
             ensure_ascii=False,
         ),
         encoding="utf-8",
@@ -144,6 +162,9 @@ def test_short_html_is_one_exact_chunk_with_null_page_provenance() -> None:
     }
     assert set(result["source"]) == {
         "id",
+        "logical_document_id",
+        "version",
+        "snapshot_sha256",
         "title",
         "url",
         "final_url",

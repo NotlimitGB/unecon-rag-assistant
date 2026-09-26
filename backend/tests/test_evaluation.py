@@ -65,7 +65,7 @@ def test_invalid_dataset_rejected(raw_dataset, change):
 
 def test_inactive_primary_and_distribution_rejected(raw_dataset):
     manifest = copy.deepcopy(MANIFEST)
-    manifest.sources[8].active = False
+    manifest.sources[8].status = "draft"
     with pytest.raises(DatasetError):
         validate_dataset(raw_dataset, manifest)
     raw_dataset["questions"][0]["difficulty"] = "hard"

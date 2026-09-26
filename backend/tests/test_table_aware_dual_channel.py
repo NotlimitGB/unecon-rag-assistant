@@ -70,12 +70,19 @@ def corpus():
     ]
     source = Source(
         id="admission-capacity-pdf",
+        logical_document_id="admission-capacity-pdf",
         title="Количество мест",
         url="https://unecon.ru/a.pdf",
         source_type="pdf",
         category="capacity",
         admission_year=2026,
-        active=True,
+        status="active",
+        version=1,
+        supersedes=None,
+        published_at=None,
+        effective_from=None,
+        effective_to=None,
+        processing={"table_aware": False},
     )
     artifacts = [
         {

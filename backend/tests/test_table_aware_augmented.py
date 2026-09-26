@@ -83,12 +83,19 @@ def test_saved_index_retains_hash_and_record_order(tmp_path):
 def test_table_rows_keep_manifest_and_page_provenance():
     source = Source(
         id="admission-capacity-pdf",
+        logical_document_id="admission-capacity-pdf",
         title="Количество мест",
         url="https://unecon.ru/a.pdf",
         source_type="pdf",
         category="capacity",
         admission_year=2026,
-        active=True,
+        status="active",
+        version=1,
+        supersedes=None,
+        published_at=None,
+        effective_from=None,
+        effective_to=None,
+        processing={"table_aware": False},
     )
     artifact = {
         "source": {"id": source.id, "final_url": "https://unecon.ru/final.pdf"},

@@ -49,7 +49,7 @@ def run(
     manifest = load_manifest(manifest_path)
     sources = [source for source in manifest.sources if source.id in TARGET_IDS]
     if tuple(source.id for source in sources) != TARGET_IDS or any(
-        not source.active for source in sources
+        not source.is_active for source in sources
     ):
         raise ExperimentError("target sources are missing, reordered, or inactive")
 

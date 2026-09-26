@@ -10,23 +10,17 @@ from pathlib import Path
 from typing import Any
 
 import faiss
-import httpx
 import pymupdf
 
 from app.chunking.core import validate_normalized_document
-from app.ingestion.fetcher import fetch_pdf
 from app.ingestion.manifest import load_manifest
+from app.ingestion.models import active_sources
+from app.ingestion.snapshots import DEFAULT_ORIGINALS_ROOT, read_pair
 from app.retrieval.corpus import RetrievalError, load_corpus
 from app.retrieval.embeddings import DenseEmbedder
 from app.retrieval.index import _default_factory, _validated_index, _vectors
 from app.retrieval.table_extract import STRATEGY, extract_pdf_tables, row_id
 
-# Only these PDFs participated in the accepted Task014–018 evaluation.
-TABLE_SOURCE_IDS = (
-    "admission-capacity-pdf",
-    "entrance-exams-list-pdf",
-    "tuition-order-128-pdf",
-)
 ARCHITECTURE = "dual-channel-pdf-page-diversity-v1"
 RECORD_KEYS = {
     "vector_id",
@@ -54,16 +48,12 @@ def _digest(content: bytes) -> str:
 
 def _sources(manifest_path: Path) -> list[Any]:
     manifest = load_manifest(manifest_path)
-    by_id = {source.id: source for source in manifest.sources}
-    if any(
-        source_id not in by_id
-        or not by_id[source_id].active
-        or by_id[source_id].source_type != "pdf"
-        or by_id[source_id].admission_year != 2026
-        for source_id in TABLE_SOURCE_IDS
-    ):
-        raise RetrievalError("approved table PDF sources are missing, inactive, or changed")
-    return [by_id[source_id] for source_id in TABLE_SOURCE_IDS]
+    sources = [
+        s for s in active_sources(manifest) if s.source_type == "pdf" and s.processing.table_aware
+    ]
+    if not sources:
+        raise RetrievalError("no active table-aware PDF sources")
+    return sources
 
 
 def _normalized(source: Any, pdf_root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -125,9 +115,9 @@ def build_table_index(
     device: str = "auto",
     batch_size: int = 16,
     embedder_factory: Callable[[], DenseEmbedder] | None = None,
-    client: httpx.Client | None = None,
+    originals_root: Path = DEFAULT_ORIGINALS_ROOT,
 ) -> dict[str, Any]:
-    """Fetch verified PDFs once, then embed rows and publish the index pair."""
+    """Read verified PDF snapshots, then embed rows and publish the index pair."""
     if (
         not model_name.strip()
         or device not in {"auto", "cpu", "cuda"}
@@ -137,25 +127,15 @@ def build_table_index(
     production, production_meta = _production(manifest_path, chunks_dir, production_dir, model_name)
     sources = _sources(manifest_path)
     originals = [_normalized(source, pdf_root) for source in sources]
-    own_client = client is None
-    if own_client:
-        client = httpx.Client(timeout=60)
     try:
-        fetched = [fetch_pdf(source, client) for source in sources]
-    finally:
-        if own_client:
-            client.close()
-    for source, (normalized, document), pdf in zip(sources, originals, fetched, strict=True):
-        if _digest(pdf.content) != document["file_sha256"]:
-            raise RetrievalError(
-                f"official PDF changed for {source.id}; rerun ingestion, "
-                "chunking, and index preparation"
-            )
-        if pdf.final_url != normalized["source"]["final_url"]:
-            raise RetrievalError(f"official PDF final URL changed for {source.id}")
+        snapshots = [read_pair(source, pdf_root, originals_root)[1] for source in sources]
+    except (OSError, ValueError) as exc:
+        raise RetrievalError(
+            f"invalid or missing PDF snapshot; run ingestion fetch: {exc}"
+        ) from exc
     artifacts = [
-        extract_pdf_tables(source, pdf.final_url, pdf.content)
-        for source, pdf in zip(sources, fetched, strict=True)
+        extract_pdf_tables(source, normalized["source"]["final_url"], content)
+        for source, (normalized, _), content in zip(sources, originals, snapshots, strict=True)
     ]
     records = _records(artifacts, sources, len(production_meta["records"]))
     if {record["chunk_id"] for record in records} & {
@@ -169,7 +149,7 @@ def build_table_index(
     index = faiss.IndexFlatIP(production.d)
     index.add(vectors)
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "architecture": ARCHITECTURE,
         "embedding": {"model": model_name, "dimension": production.d, "normalized": True},
         "index": {
@@ -186,6 +166,9 @@ def build_table_index(
         "sources": [
             {
                 "source_id": source.id,
+                "logical_document_id": source.logical_document_id,
+                "version": source.version,
+                "snapshot_sha256": normalized["source"]["snapshot_sha256"],
                 "file_sha256": document["file_sha256"],
                 "content_sha256": document["content_sha256"],
                 "final_url": normalized["source"]["final_url"],
@@ -247,7 +230,7 @@ def validated_table_index(
                 "records",
             }
             or type(meta["schema_version"]) is not int
-            or meta["schema_version"] != 1
+            or meta["schema_version"] != 2
             or meta["architecture"] != ARCHITECTURE
         ):
             raise RetrievalError("invalid table index metadata schema")
@@ -298,6 +281,9 @@ def validated_table_index(
                 or set(saved)
                 != {
                     "source_id",
+                    "logical_document_id",
+                    "version",
+                    "snapshot_sha256",
                     "file_sha256",
                     "content_sha256",
                     "final_url",
@@ -307,6 +293,9 @@ def validated_table_index(
                 or any(
                     (
                         saved["source_id"] != source.id,
+                        saved["logical_document_id"] != source.logical_document_id,
+                        type(saved["version"]) is not int or saved["version"] != source.version,
+                        saved["snapshot_sha256"] != normalized["source"]["snapshot_sha256"],
                         saved["file_sha256"] != document["file_sha256"],
                         saved["content_sha256"] != document["content_sha256"],
                         saved["final_url"] != normalized["source"]["final_url"],

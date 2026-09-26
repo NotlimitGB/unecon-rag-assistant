@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from app.ingestion.models import Manifest
+from app.ingestion.models import Manifest, active_sources
 
 DATASET_ID = "unecon-retrieval-2026-v1"
 REQUIRED_CATEGORIES = {
@@ -55,8 +55,8 @@ def validate_dataset(raw: Any, manifest: Manifest) -> dict[str, Any]:
         raise DatasetError("dataset must contain exactly 80 questions")
     active = {
         source.id: source
-        for source in manifest.sources
-        if source.active and source.admission_year == raw["admission_year"]
+        for source in active_sources(manifest)
+        if source.admission_year == raw["admission_year"]
     }
     categories = {source.category for source in active.values()}
     seen_texts: set[str] = set()

@@ -12,18 +12,25 @@ from app.ingestion.cli import main
 from app.ingestion.fetcher import IngestionError, fetch_html, fetch_pdf
 from app.ingestion.html import ExtractedDocument, extract_html
 from app.ingestion.manifest import ManifestError, load_manifest
-from app.ingestion.models import Source
+from app.ingestion.models import Source, source_identity
 from app.ingestion.pdf import PAGE_SEPARATOR, extract_pdf
 from app.ingestion.writer import build_document, build_pdf_document, write_document
 
 SOURCE = {
     "id": "admissions-bachelor",
+    "logical_document_id": "admissions-bachelor",
     "title": "Бакалавриат и специалитет",
     "url": "https://unecon.ru/priem/bachelor/",
     "source_type": "html",
     "category": "admissions_overview",
     "admission_year": 2026,
-    "active": True,
+    "status": "active",
+    "version": 1,
+    "supersedes": None,
+    "published_at": None,
+    "effective_from": None,
+    "effective_to": None,
+    "processing": {"table_aware": False},
 }
 HTML = """<html><head><title>Заголовок сайта</title><script>hidden()</script></head>
 <body><header>Шапка сайта</header><nav>Меню сайта</nav>
@@ -34,6 +41,7 @@ HTML = """<html><head><title>Заголовок сайта</title><script>hidden
 PDF_SOURCE = {
     **SOURCE,
     "id": "admission-deadlines-pdf",
+    "logical_document_id": "admission-deadlines-pdf",
     "title": "Сроки проведения приема в 2026 году",
     "url": "https://unecon.ru/example.pdf",
     "source_type": "pdf",
@@ -92,7 +100,7 @@ def zero_page_pdf() -> bytes:
 
 def manifest_file(path: Path, sources: list[dict] | None = None) -> Path:
     path.write_text(
-        json.dumps({"schema_version": 1, "sources": sources or [SOURCE]}, ensure_ascii=False),
+        json.dumps({"schema_version": 2, "sources": sources or [SOURCE]}, ensure_ascii=False),
         encoding="utf-8",
     )
     return path
@@ -100,7 +108,7 @@ def manifest_file(path: Path, sources: list[dict] | None = None) -> Path:
 
 def test_valid_manifest_loads(tmp_path: Path) -> None:
     manifest = load_manifest(manifest_file(tmp_path / "manifest.json"))
-    assert manifest.schema_version == 1
+    assert manifest.schema_version == 2
     assert manifest.sources[0].id == SOURCE["id"]
 
 
@@ -121,7 +129,7 @@ def test_curated_manifest_contains_exact_approved_pdf_sources() -> None:
         "entrance-exam-regulations-pdf",
         "tuition-order-128-pdf",
     }
-    assert all(source.active and source.admission_year == 2026 for source in pdf_sources)
+    assert all(source.is_active and source.admission_year == 2026 for source in pdf_sources)
     assert all(source.url.endswith(".pdf") for source in pdf_sources)
     assert "tuition-order-177-pdf" not in {source.id for source in manifest.sources}
 
@@ -242,16 +250,12 @@ def test_pdf_fetch_success_with_internal_redirect() -> None:
             "unsupported content type",
         ),
         (
-            httpx.Response(
-                200, headers={"content-type": "application/pdf"}, content=b"not a PDF"
-            ),
+            httpx.Response(200, headers={"content-type": "application/pdf"}, content=b"not a PDF"),
             "signature",
         ),
     ],
 )
-def test_pdf_fetch_rejects_http_type_and_signature(
-    response: httpx.Response, message: str
-) -> None:
+def test_pdf_fetch_rejects_http_type_and_signature(response: httpx.Response, message: str) -> None:
     with httpx.Client(transport=httpx.MockTransport(lambda _: response)) as client:
         with pytest.raises(IngestionError, match=message):
             fetch_pdf(Source.model_validate(PDF_SOURCE), client)
@@ -344,7 +348,6 @@ def test_pdf_cli_dispatches_and_does_not_replace_output_on_extraction_failure(
     output_dir = tmp_path / "output"
     output_dir.mkdir()
     existing = output_dir / f"{PDF_SOURCE['id']}.json"
-    existing.write_text('{"existing": true}\n', encoding="utf-8")
 
     responses = [synthetic_pdf(), empty_pdf()]
 
@@ -358,8 +361,17 @@ def test_pdf_cli_dispatches_and_does_not_replace_output_on_extraction_failure(
 
     transport = httpx.MockTransport(respond)
     first_result = main(
-        ["fetch", "--source-id", PDF_SOURCE["id"], "--manifest", str(path),
-         "--output-dir", str(output_dir)],
+        [
+            "fetch",
+            "--source-id",
+            PDF_SOURCE["id"],
+            "--manifest",
+            str(path),
+            "--output-dir",
+            str(output_dir),
+            "--originals-root",
+            str(tmp_path / "originals"),
+        ],
         transport=transport,
     )
     assert first_result == 0
@@ -368,8 +380,17 @@ def test_pdf_cli_dispatches_and_does_not_replace_output_on_extraction_failure(
     assert "OK admission-deadlines-pdf" in capsys.readouterr().out
 
     second_result = main(
-        ["fetch", "--source-id", PDF_SOURCE["id"], "--manifest", str(path),
-         "--output-dir", str(output_dir)],
+        [
+            "fetch",
+            "--source-id",
+            PDF_SOURCE["id"],
+            "--manifest",
+            str(path),
+            "--output-dir",
+            str(output_dir),
+            "--originals-root",
+            str(tmp_path / "originals"),
+        ],
         transport=transport,
     )
     assert second_result == 1
@@ -380,21 +401,26 @@ def test_pdf_cli_dispatches_and_does_not_replace_output_on_extraction_failure(
 def test_document_contract_utf8_hash_and_atomic_replace(tmp_path: Path) -> None:
     source = Source.model_validate(SOURCE)
     extracted = ExtractedDocument(title="Приём в вуз", text="Русский текст\n\nВторой абзац")
-    document = build_document(source, "https://unecon.ru/new-page/", extracted)
+    document = build_document(source, "https://unecon.ru/new-page/", extracted, HTML.encode())
     output = write_document(tmp_path, source.id, document)
     saved = json.loads(output.read_text(encoding="utf-8"))
-    expected_source = {key: value for key, value in SOURCE.items() if key != "active"}
-    assert saved["source"] == {**expected_source, "final_url": "https://unecon.ru/new-page/"}
+    expected_source = source_identity(source)
+    assert saved["source"] == {
+        **expected_source,
+        "final_url": "https://unecon.ru/new-page/",
+        "snapshot_sha256": hashlib.sha256(HTML.encode()).hexdigest(),
+    }
     assert "active" not in saved["source"]
     assert saved["document"]["text"] == extracted.text
-    assert saved["document"]["content_sha256"] == hashlib.sha256(
-        extracted.text.encode("utf-8")
-    ).hexdigest()
+    assert (
+        saved["document"]["content_sha256"]
+        == hashlib.sha256(extracted.text.encode("utf-8")).hexdigest()
+    )
     assert "Русский текст" in output.read_text(encoding="utf-8")
     assert list(tmp_path.glob("*.tmp")) == []
 
     with pytest.raises(IngestionError, match="no meaningful text"):
-        build_document(source, source.url, ExtractedDocument(title="", text=" "))
+        build_document(source, source.url, ExtractedDocument(title="", text=" "), b" ")
     assert json.loads(output.read_text(encoding="utf-8")) == saved
 
     with patch("app.ingestion.writer.os.replace", side_effect=OSError("disk failure")):
@@ -429,8 +455,17 @@ def test_cli_one_source_success(tmp_path: Path, capsys: pytest.CaptureFixture[st
         lambda _: httpx.Response(200, headers={"content-type": "text/html"}, text=HTML)
     )
     result = main(
-        ["fetch", "--source-id", SOURCE["id"], "--manifest", str(path),
-         "--output-dir", str(output_dir)],
+        [
+            "fetch",
+            "--source-id",
+            SOURCE["id"],
+            "--manifest",
+            str(path),
+            "--output-dir",
+            str(output_dir),
+            "--originals-root",
+            str(tmp_path / "originals"),
+        ],
         transport=transport,
     )
     assert result == 0
@@ -445,18 +480,23 @@ def test_cli_validates_every_source_before_network(tmp_path: Path) -> None:
     def unexpected_request(_: httpx.Request) -> httpx.Response:
         raise AssertionError("manifest must be validated before any request")
 
-    assert main(
-        ["fetch", "--source-id", SOURCE["id"], "--manifest", str(path)],
-        transport=httpx.MockTransport(unexpected_request),
-    ) == 1
+    assert (
+        main(
+            ["fetch", "--source-id", SOURCE["id"], "--manifest", str(path)],
+            transport=httpx.MockTransport(unexpected_request),
+        )
+        == 1
+    )
 
 
 def test_cli_skips_inactive_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = manifest_file(tmp_path / "manifest.json", [{**SOURCE, "active": False}])
+    path = manifest_file(tmp_path / "manifest.json", [{**SOURCE, "status": "draft"}])
 
     def unexpected_request(_: httpx.Request) -> httpx.Response:
         raise AssertionError("inactive source must not be fetched")
 
-    assert main(["fetch", "--manifest", str(path)],
-                transport=httpx.MockTransport(unexpected_request)) == 0
+    assert (
+        main(["fetch", "--manifest", str(path)], transport=httpx.MockTransport(unexpected_request))
+        == 0
+    )
     assert "processed=0 failed=0 skipped=1" in capsys.readouterr().out

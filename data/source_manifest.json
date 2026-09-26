@@ -1,113 +1,221 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "sources": [
     {
       "id": "admissions-bachelor",
+      "logical_document_id": "admissions-bachelor-page",
+      "version": 1,
       "title": "Бакалавриат и специалитет",
       "url": "https://unecon.ru/priem/bachelor/",
       "source_type": "html",
       "category": "admissions_overview",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "admission-documents",
+      "logical_document_id": "admission-documents-page",
+      "version": 1,
       "title": "Документы и правила приема",
       "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/",
       "source_type": "html",
       "category": "admission_rules",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "admission-rules",
+      "logical_document_id": "admission-rules-page",
+      "version": 1,
       "title": "Правила приема",
       "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/pravila-priema/",
       "source_type": "html",
       "category": "admission_rules",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "entrance-exams",
+      "logical_document_id": "entrance-exams-page",
+      "version": 1,
       "title": "Вступительные испытания",
       "url": "https://unecon.ru/priem/bachelor/dokumenty-i-pravila-priyoma-bakalavriat-i-speczialitet/programmy-vstupitelnyh-ispytanij/",
       "source_type": "html",
       "category": "entrance_exams",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "admissions-faq",
+      "logical_document_id": "admissions-faq-page",
+      "version": 1,
       "title": "Вопрос — ответ",
       "url": "https://unecon.ru/priem/vopros-otvet/",
       "source_type": "html",
       "category": "faq",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "tuition",
+      "logical_document_id": "tuition-page",
+      "version": 1,
       "title": "Платное обучение",
       "url": "https://unecon.ru/priem/kontraktnoe-obuchenie/",
       "source_type": "html",
       "category": "tuition",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "admission-rules-pdf",
+      "logical_document_id": "admission-rules-document",
+      "version": 1,
       "title": "Правила приема 2026",
       "url": "https://unecon.ru/wp-content/uploads/2026/06/pp_spbgeu_2026_13052026.pdf",
       "source_type": "pdf",
       "category": "admission_rules",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "admission-capacity-pdf",
+      "logical_document_id": "admission-capacity-document",
+      "version": 1,
       "title": "Количество мест для приема на 2026/27 учебный год",
       "url": "https://unecon.ru/wp-content/uploads/2026/01/kolichestvo_mest_dlya_priema_2026_2027_bak_specz_so_snoskami.pdf",
       "source_type": "pdf",
       "category": "admission_capacity",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": true
+      }
     },
     {
       "id": "admission-deadlines-pdf",
+      "logical_document_id": "admission-deadlines-document",
+      "version": 1,
       "title": "Сроки проведения приема в 2026 году",
       "url": "https://unecon.ru/wp-content/uploads/2026/02/sroki-priema-2026-bak.pdf",
       "source_type": "pdf",
       "category": "admission_deadlines",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "entrance-exams-list-pdf",
+      "logical_document_id": "entrance-exams-list-document",
+      "version": 1,
       "title": "Перечень вступительных испытаний 2026",
       "url": "https://unecon.ru/wp-content/uploads/2026/01/perechen_k_bak_specz_vstupitelnyh_ispytanij_s_ukazaniem_min_ballov-1.pdf",
       "source_type": "pdf",
       "category": "entrance_exams",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": true
+      }
     },
     {
       "id": "entrance-exam-regulations-pdf",
+      "logical_document_id": "entrance-exam-regulations-document",
+      "version": 1,
       "title": "Регламент проведения вступительных испытаний",
       "url": "https://unecon.ru/wp-content/uploads/2026/06/reglament-vi.pdf",
       "source_type": "pdf",
       "category": "entrance_exams",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": false
+      }
     },
     {
       "id": "tuition-order-128-pdf",
+      "logical_document_id": "tuition-fees-document",
+      "version": 1,
       "title": "Стоимость обучения 2026/2027 — приказ № 128",
       "url": "https://unecon.ru/wp-content/uploads/2026/05/prikaz-%E2%84%96-128-ot-13.04.2026-ob-ustan.-stoimosti-obucheniya-dlya-licz-postup.-na-1-kurs-2026-2027-uch.g.pdf",
       "source_type": "pdf",
       "category": "tuition",
       "admission_year": 2026,
-      "active": true
+      "status": "active",
+      "supersedes": null,
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "processing": {
+        "table_aware": true
+      }
     }
   ]
 }

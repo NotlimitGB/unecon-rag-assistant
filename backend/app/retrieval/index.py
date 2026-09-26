@@ -85,7 +85,7 @@ def build_index(
     index = faiss.IndexFlatIP(dimension)
     index.add(vectors)
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "embedding": {"model": model_name, "dimension": dimension, "normalized": True},
         "index": {
             "type": "IndexFlatIP",
@@ -137,7 +137,7 @@ def _validated_index(
             "records",
         }:
             raise RetrievalError("invalid metadata schema")
-        if type(metadata["schema_version"]) is not int or metadata["schema_version"] != 1:
+        if type(metadata["schema_version"]) is not int or metadata["schema_version"] != 2:
             raise RetrievalError("invalid metadata version")
         embedding = metadata["embedding"]
         info = metadata["index"]
@@ -183,7 +183,22 @@ def _validated_index(
             raise RetrievalError("invalid corpus metadata")
         if any(
             not isinstance(source, dict)
-            or set(source) != {"source_id", "content_sha256", "file_sha256", "chunk_count"}
+            or set(source)
+            != {
+                "source_id",
+                "logical_document_id",
+                "version",
+                "snapshot_sha256",
+                "content_sha256",
+                "file_sha256",
+                "chunk_count",
+            }
+            or not isinstance(source["logical_document_id"], str)
+            or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", source["logical_document_id"])
+            or type(source["version"]) is not int
+            or source["version"] < 1
+            or not isinstance(source["snapshot_sha256"], str)
+            or not HEX_SHA256.fullmatch(source["snapshot_sha256"])
             or not isinstance(source["source_id"], str)
             or not isinstance(source["content_sha256"], str)
             or not HEX_SHA256.fullmatch(source["content_sha256"])

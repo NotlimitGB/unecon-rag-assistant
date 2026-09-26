@@ -32,12 +32,19 @@ from app.ingestion.models import Source
 def _source() -> Source:
     return Source(
         id="admission-capacity-pdf",
+        logical_document_id="admission-capacity-pdf",
         title="Тестовая таблица",
         url="https://unecon.ru/table.pdf",
         source_type="pdf",
         category="test",
         admission_year=2026,
-        active=True,
+        status="active",
+        version=1,
+        supersedes=None,
+        published_at=None,
+        effective_from=None,
+        effective_to=None,
+        processing={"table_aware": False},
     )
 
 

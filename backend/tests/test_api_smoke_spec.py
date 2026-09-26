@@ -64,7 +64,7 @@ def test_invalid_spec(mutation):
         case["acceptable_evidence"][0]["source_id"] = "unknown"
     elif mutation == "inactive":
         manifest = SimpleNamespace(
-            sources=[s.model_copy(update={"active": False}) for s in manifest.sources]
+            sources=[s.model_copy(update={"status": "draft"}) for s in manifest.sources]
         )
     elif mutation == "pages":
         case["acceptable_evidence"][0]["pages"] = []

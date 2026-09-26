@@ -1,6 +1,7 @@
 """Strict, independently reviewed E2E evidence; historical gold stays immutable."""
 
 from app.evaluation.dataset import DatasetError
+from app.ingestion.models import active_sources
 
 CASE_IDS = ("gen-001", "gen-007", "gen-019", "gen-026", "gen-027", "gen-049")
 
@@ -14,7 +15,7 @@ def validate_spec(raw: object, manifest, generation: dict) -> list[dict]:
     if not isinstance(cases, list) or len(cases) != 6:
         raise DatasetError("smoke requires exactly six cases")
     questions = {q["question_id"]: q for q in generation["questions"]}
-    sources = {s.id: s for s in manifest.sources if s.active}
+    sources = {s.id: s for s in active_sources(manifest)}
     for case, expected_id in zip(cases, CASE_IDS, strict=True):
         if not isinstance(case, dict):
             raise DatasetError("invalid smoke case")

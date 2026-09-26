@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.chunking.core import ChunkingError, build_source_chunks, load_source_manifest
 from app.ingestion.manifest import ManifestError
+from app.ingestion.models import active_sources
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "source_manifest.json"
@@ -29,17 +30,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("processed=0 failed=1 skipped=0 chunks=0")
         return 1
 
+    active_ids = {s.id for s in active_sources(manifest)}
     sources = manifest.sources
     if args.source_id:
         sources = [source for source in sources if source.id == args.source_id]
-        if not sources or not sources[0].active:
+        if not sources or sources[0].id not in active_ids:
             print(f"FAILED {args.source_id}: unknown or inactive source id")
             print("processed=0 failed=1 skipped=0 chunks=0")
             return 1
 
     processed = failed = skipped = chunks = 0
     for source in sources:
-        if not source.active:
+        if source.id not in active_ids:
             skipped += 1
             print(f"SKIPPED {source.id}")
             continue
