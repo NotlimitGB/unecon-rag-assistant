@@ -12,6 +12,7 @@ from typing import Any
 import faiss
 import numpy as np
 
+from app.corpus.paths import protect_saved_release
 from app.retrieval.corpus import RetrievalError, load_corpus
 from app.retrieval.embeddings import DenseEmbedder, SentenceTransformerEmbedder
 
@@ -76,6 +77,7 @@ def build_index(
         or not 1 <= batch_size <= 128
     ):
         raise RetrievalError("invalid embedding configuration")
+    protect_saved_release(index_dir)
     fingerprints, records = load_corpus(manifest_path, chunks_dir)
     embedder = (embedder_factory or _default_factory(model_name, device, batch_size))()
     vectors = _vectors(

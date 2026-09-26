@@ -295,6 +295,9 @@ def test_invalid_embedding_settings(values):
 
 
 def test_cli_build_and_search_output(corpus, monkeypatch, capsys):
+    from app.corpus.paths import legacy_paths
+
+    monkeypatch.setattr("app.retrieval.cli.current_paths", legacy_paths)
     monkeypatch.setattr(
         "app.retrieval.cli.build_index",
         lambda *args: {

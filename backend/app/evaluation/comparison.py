@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.corpus.paths import protect_saved_release
 from app.evaluation.runner import _first_rank, evaluate_retrieval
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.reranker import RerankedRetrievalSession
@@ -283,6 +284,7 @@ def render_comparison(report: dict[str, Any]) -> str:
 
 
 def write_comparison(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "reranker_comparison.json"
     md_path = output_dir / "reranker_comparison.md"

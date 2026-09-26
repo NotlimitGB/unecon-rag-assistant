@@ -263,6 +263,9 @@ def test_outside_top_20_cannot_be_reranked():
 
 
 def test_optional_cli_keeps_dense_command_separate(monkeypatch, capsys):
+    from app.corpus.paths import legacy_paths
+
+    monkeypatch.setattr("app.retrieval.cli.current_paths", legacy_paths)
     created = []
 
     class FakeSession:

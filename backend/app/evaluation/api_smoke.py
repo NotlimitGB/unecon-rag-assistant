@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.config import settings
+from app.corpus.paths import CorpusPaths
 from app.evaluation.api_generation_gate import load_v1_baseline
 from app.evaluation.api_smoke_spec import CASE_IDS, validate_evidence_pages, validate_spec
 from app.evaluation.generation_cli import (
@@ -96,7 +97,7 @@ def load_safety_cases() -> list[dict]:
     ]
 
 
-def preflight() -> None:
+def preflight() -> CorpusPaths:
     check_baseline("grounded-answer-v2")
     load_v1_baseline()
     expected = {
@@ -113,27 +114,29 @@ def preflight() -> None:
         ROOT / "data/evaluation/retrieval_questions.json",
     )
     try:
-        preflight_corpus(retrieval)
-        _, metadata = _validated_index(ROOT / "data/processed/index", settings.embedding_model)
+        paths = preflight_corpus(retrieval)
+        _, metadata = _validated_index(paths.index, settings.embedding_model)
     except (ValueError, OSError) as exc:
         raise ValueError(
-            "Production corpus/index invalid; prepare ingestion/chunks as needed, then run "
-            "python -m app.retrieval.cli build-index"
+            "Published corpus/index invalid; inspect python -m app.corpus.cli list, "
+            "then explicitly validate/publish a candidate or rollback to a verified release"
         ) from exc
     try:
         validated_table_index(
-            ROOT / "data/source_manifest.json",
-            ROOT / "data/processed/pdf",
-            ROOT / "data/processed/table_index",
+            paths.manifest,
+            paths.pdf,
+            paths.tables,
             metadata,
             settings.embedding_model,
         )
     except (ValueError, OSError) as exc:
         raise ValueError(
-            "Table index invalid; run python -m app.retrieval.cli build-table-index"
+            "Table index invalid in selected release; "
+            "validate a candidate or rollback via app.corpus"
         ) from exc
     validate_evidence_pages(load_cases(), metadata["records"])
     preflight_ollama()
+    return paths
 
 
 def check_case(case: dict, http_status: int, body: object) -> dict:
@@ -297,10 +300,18 @@ def run(output_dir: Path, *, safety: bool = False) -> dict:
     }
     try:
         cases = load_safety_cases() if safety else load_cases()
-        preflight()
+        selected_corpus = preflight()
         report.update(ollama_preflight_result={"passed": True}, corpus_preflight_passed=True)
         application = create_app()
         with TestClient(application) as client:
+            if selected_corpus is not None:
+                retrieval_service = application.state.answer_service.retrieval_service
+                if (
+                    retrieval_service.manifest_path != selected_corpus.manifest
+                    or retrieval_service.index_dir != selected_corpus.index
+                    or retrieval_service.table_index_dir != selected_corpus.tables
+                ):
+                    raise ValueError("corpus changed between preflight and application startup")
             report.update(exercise(client, application, cases))
         report["pass_count"] = sum(c["passed"] for c in report["case_results"])
         if report["pass_count"] == len(identities) and report["service_reused"]:

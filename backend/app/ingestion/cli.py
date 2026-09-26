@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 
+from app.corpus.storage import current_paths
 from app.ingestion.errors import IngestionError
 from app.ingestion.fetcher import fetch_html, fetch_pdf
 from app.ingestion.html import extract_html
@@ -26,20 +27,32 @@ def main(argv: Sequence[str] | None = None, transport: httpx.BaseTransport | Non
     parser = argparse.ArgumentParser(description="Fetch approved UNECON HTML and PDF sources")
     parser.add_argument("command", choices=["fetch", "list", "audit", "freshness"])
     parser.add_argument("--source-id", help="Fetch one active source")
-    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument(
         "--output-dir",
         type=Path,
         help="Override the destination directory (default depends on source type)",
     )
-    parser.add_argument("--originals-root", type=Path, default=DEFAULT_ORIGINALS_ROOT)
-    parser.add_argument("--input-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument("--originals-root", type=Path)
+    parser.add_argument("--input-root", type=Path)
     parser.add_argument("--as-of", type=parse_date, default=datetime.now(UTC).date())
     args = parser.parse_args(argv)
 
     try:
+        if args.command != "fetch" and all(
+            p is None for p in (args.manifest, args.originals_root, args.input_root)
+        ):
+            corpus = current_paths()
+            args.manifest, args.input_root, args.originals_root = (
+                corpus.manifest,
+                corpus.root,
+                corpus.originals,
+            )
+        args.manifest = args.manifest or DEFAULT_MANIFEST
+        args.input_root = args.input_root or DEFAULT_OUTPUT_ROOT
+        args.originals_root = args.originals_root or DEFAULT_ORIGINALS_ROOT
         manifest = load_manifest(args.manifest)
-    except ManifestError as exc:
+    except (ManifestError, OSError, ValueError) as exc:
         print(f"FAILED manifest: {exc}")
         print("processed=0 failed=1 skipped=0")
         return 1

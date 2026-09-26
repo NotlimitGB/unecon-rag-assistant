@@ -7,6 +7,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from app.config import settings
+from app.corpus.paths import legacy_paths
+from app.corpus.storage import current_paths
 from app.evaluation.canonical import run_canonical_evaluation
 from app.evaluation.comparison import compare, write_comparison
 from app.evaluation.dataset import DatasetError, load_dataset, validate_page_labels
@@ -50,13 +52,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--dataset", type=Path, default=PROJECT_ROOT / "data/evaluation/retrieval_questions.json"
     )
-    parser.add_argument("--manifest", type=Path, default=PROJECT_ROOT / "data/source_manifest.json")
-    parser.add_argument("--chunks-dir", type=Path, default=PROJECT_ROOT / "data/processed/chunks")
-    parser.add_argument("--index-dir", type=Path, default=PROJECT_ROOT / "data/processed/index")
-    parser.add_argument("--pdf-root", type=Path, default=PROJECT_ROOT / "data/processed/pdf")
-    parser.add_argument(
-        "--table-index-dir", type=Path, default=PROJECT_ROOT / "data/processed/table_index"
-    )
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--chunks-dir", type=Path)
+    parser.add_argument("--index-dir", type=Path)
+    parser.add_argument("--pdf-root", type=Path)
+    parser.add_argument("--table-index-dir", type=Path)
     parser.add_argument(
         "--task018-report",
         type=Path,
@@ -90,6 +90,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         parser.error("invalid reranker options")
     try:
+        keys = ("manifest", "chunks_dir", "index_dir", "pdf_root", "table_index_dir")
+        defaults = (
+            current_paths()
+            if args.command == "canonical-retrieval"
+            and all(getattr(args, key) is None for key in keys)
+            else legacy_paths()
+        )
+        values = (defaults.manifest, defaults.chunks, defaults.index, defaults.pdf, defaults.tables)
+        for key, value in zip(keys, values, strict=True):
+            if getattr(args, key) is None:
+                setattr(args, key, value)
         if args.command == "retrieval":
             report = run_evaluation(
                 args.dataset,

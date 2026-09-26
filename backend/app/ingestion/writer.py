@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from app.corpus.paths import protect_saved_release
 from app.ingestion.errors import IngestionError
 from app.ingestion.html import ExtractedDocument
 from app.ingestion.models import Source, source_identity
@@ -57,6 +58,7 @@ def build_pdf_document(
 
 
 def write_document(output_dir: Path, source_id: str, document: dict[str, Any]) -> Path:
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / f"{source_id}.json"
     serialized = json.dumps(document, ensure_ascii=False, indent=2) + "\n"

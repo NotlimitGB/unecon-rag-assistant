@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.chunking.core import validate_normalized_document
+from app.corpus.paths import protect_saved_release
 from app.ingestion.errors import IngestionError
 from app.ingestion.html import extract_html
 from app.ingestion.models import Source
@@ -42,6 +43,8 @@ def write_pair(
     source: Source, output_dir: Path, originals_root: Path, artifact: dict[str, Any], content: bytes
 ) -> Path:
     """Publish a new pair metadata-last; never overwrite an existing source version."""
+    protect_saved_release(output_dir)
+    protect_saved_release(originals_root)
     validate_snapshot(source, artifact, content)
     original = snapshot_path(originals_root, source)
     destination = output_dir / f"{source.id}.json"

@@ -8,6 +8,8 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from app.config import Settings, settings
+from app.corpus.paths import legacy_paths
+from app.corpus.storage import current_paths
 from app.ingestion.models import validate_official_url
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession
@@ -100,29 +102,42 @@ class RetrievalService:
         self,
         config: Settings | None = None,
         mode: RetrievalMode | None = None,
-        manifest_path: Path = PROJECT_ROOT / "data/source_manifest.json",
-        chunks_dir: Path = PROJECT_ROOT / "data/processed/chunks",
-        index_dir: Path = PROJECT_ROOT / "data/processed/index",
+        manifest_path: Path | None = None,
+        chunks_dir: Path | None = None,
+        index_dir: Path | None = None,
         dense_factory: Callable[[], SearchSession] | None = None,
         reranked_factory: Callable[[SearchSession], SearchSession] | None = None,
-        pdf_root: Path = PROJECT_ROOT / "data/processed/pdf",
-        table_index_dir: Path = PROJECT_ROOT / "data/processed/table_index",
+        pdf_root: Path | None = None,
+        table_index_dir: Path | None = None,
     ):
         self.config = config or settings
         self.mode = mode if mode is not None else self.config.retrieval_mode
         if self.mode not in ("dense", "reranked"):
             raise RetrievalError("retrieval mode must be dense or reranked")
-        self.manifest_path = manifest_path
-        self.chunks_dir = chunks_dir
-        self.index_dir = index_dir
-        self.pdf_root = pdf_root
-        self.table_index_dir = table_index_dir
+        self._corpus_error: str | None = None
+        explicit = any(
+            p is not None for p in (manifest_path, chunks_dir, index_dir, pdf_root, table_index_dir)
+        )
+        defaults = legacy_paths()
+        if not explicit and dense_factory is None and reranked_factory is None:
+            try:
+                defaults = current_paths()
+            except (OSError, ValueError, RuntimeError) as exc:
+                # Keep startup/health available; pin the error until this service is replaced.
+                self._corpus_error = f"corpus selection failed: {exc}"
+        self.manifest_path = manifest_path if manifest_path is not None else defaults.manifest
+        self.chunks_dir = chunks_dir if chunks_dir is not None else defaults.chunks
+        self.index_dir = index_dir if index_dir is not None else defaults.index
+        self.pdf_root = pdf_root if pdf_root is not None else defaults.pdf
+        self.table_index_dir = table_index_dir if table_index_dir is not None else defaults.tables
         self._dense_factory = dense_factory
         self._reranked_factory = reranked_factory
         self._dense_session: SearchSession | None = None
         self._reranked_session: SearchSession | None = None
 
     def _session(self) -> SearchSession:
+        if self._corpus_error is not None:
+            raise RetrievalError(self._corpus_error)
         if self._dense_session is None:
             self._dense_session = (
                 self._dense_factory()

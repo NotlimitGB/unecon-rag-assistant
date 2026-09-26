@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from app.config import settings
+from app.corpus.storage import current_paths
 from app.ingestion.snapshots import DEFAULT_ORIGINALS_ROOT
 from app.retrieval.corpus import RetrievalError
 from app.retrieval.index import RetrievalSession, build_index, search
@@ -28,12 +29,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Build and search a local dense FAISS index")
     shared = argparse.ArgumentParser(add_help=False)
-    shared.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    shared.add_argument("--chunks-dir", type=Path, default=DEFAULT_CHUNKS_DIR)
-    shared.add_argument("--index-dir", type=Path, default=DEFAULT_INDEX_DIR)
-    shared.add_argument("--originals-root", type=Path, default=DEFAULT_ORIGINALS_ROOT)
-    shared.add_argument("--pdf-root", type=Path, default=DEFAULT_PDF_ROOT)
-    shared.add_argument("--table-index-dir", type=Path, default=DEFAULT_TABLE_INDEX_DIR)
+    shared.add_argument("--manifest", type=Path)
+    shared.add_argument("--chunks-dir", type=Path)
+    shared.add_argument("--index-dir", type=Path)
+    shared.add_argument("--originals-root", type=Path)
+    shared.add_argument("--pdf-root", type=Path)
+    shared.add_argument("--table-index-dir", type=Path)
     shared.add_argument(
         "--device", choices=["auto", "cpu", "cuda"], default=settings.embedding_device
     )
@@ -75,6 +76,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         parser.error("invalid reranker options")
     try:
+        path_defaults = {
+            "manifest": DEFAULT_MANIFEST,
+            "chunks_dir": DEFAULT_CHUNKS_DIR,
+            "index_dir": DEFAULT_INDEX_DIR,
+            "originals_root": DEFAULT_ORIGINALS_ROOT,
+            "pdf_root": DEFAULT_PDF_ROOT,
+            "table_index_dir": DEFAULT_TABLE_INDEX_DIR,
+        }
+        explicit_paths = any(getattr(args, key) is not None for key in path_defaults)
+        if args.command not in ("retrieve", "build-index", "build-table-index") and all(
+            getattr(args, key) is None for key in path_defaults
+        ):
+            corpus = current_paths()
+            path_defaults = {
+                "manifest": corpus.manifest,
+                "chunks_dir": corpus.chunks,
+                "index_dir": corpus.index,
+                "originals_root": corpus.originals,
+                "pdf_root": corpus.pdf,
+                "table_index_dir": corpus.tables,
+            }
+        for key, default in path_defaults.items():
+            if getattr(args, key) is None and (args.command != "retrieve" or explicit_paths):
+                setattr(args, key, default)
         if args.command == "build-index":
             metadata = build_index(
                 args.manifest,

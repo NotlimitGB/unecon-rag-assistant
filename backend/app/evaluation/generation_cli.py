@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 
 from app.config import settings
+from app.corpus.storage import current_paths
 from app.evaluation.dataset import DatasetError, load_dataset, validate_page_labels
 from app.evaluation.generation_dataset import load_generation_dataset
 from app.evaluation.generation_runner import (
@@ -26,6 +27,7 @@ from app.ingestion.manifest import ManifestError, load_manifest
 from app.retrieval.corpus import RetrievalError, load_corpus
 from app.retrieval.index import _validated_index
 from app.retrieval.service import RetrievalService
+from app.retrieval.table_index import validated_table_index
 
 ROOT = Path(__file__).resolve().parents[3]
 FROZEN_RETRIEVAL_SHA256 = "52de939e1ba13d1558c3e96fa6cec2cabdb69fca9158996aa1a4282d4167511e"
@@ -55,14 +57,17 @@ def check_baseline(expected_prompt: str = "grounded-answer-v1") -> None:
         raise ValueError("Task009 prompt version differs from accepted baseline")
 
 
-def preflight_corpus(retrieval: dict) -> None:
-    _, metadata = _validated_index(ROOT / "data/processed/index", settings.embedding_model)
-    fingerprints, records = load_corpus(
-        ROOT / "data/source_manifest.json", ROOT / "data/processed/chunks"
-    )
+def preflight_corpus(retrieval: dict, paths=None):
+    paths = paths or current_paths()
+    _, metadata = _validated_index(paths.index, settings.embedding_model)
+    fingerprints, records = load_corpus(paths.manifest, paths.chunks)
     if metadata["corpus"]["sources"] != fingerprints or metadata["records"] != records:
         raise RetrievalError("index is stale relative to source corpus")
     validate_page_labels(retrieval, records)
+    validated_table_index(
+        paths.manifest, paths.pdf, paths.tables, metadata, settings.embedding_model
+    )
+    return paths
 
 
 def preflight_ollama() -> None:
@@ -81,9 +86,18 @@ def preflight_ollama() -> None:
 
 def run(dataset: dict, retrieval: dict, output_dir: Path) -> dict:
     check_baseline("grounded-answer-v2")
-    preflight_corpus(retrieval)
+    paths = preflight_corpus(retrieval)
     preflight_ollama()
-    recording = RecordingRetrieval(RetrievalService(config=settings))
+    recording = RecordingRetrieval(
+        RetrievalService(
+            config=settings,
+            manifest_path=paths.manifest,
+            chunks_dir=paths.chunks,
+            index_dir=paths.index,
+            pdf_root=paths.pdf,
+            table_index_dir=paths.tables,
+        )
+    )
     service = AnswerService(retrieval_service=recording, config=settings)
     config = {
         "generation_provider": settings.generation_provider,

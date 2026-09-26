@@ -52,7 +52,7 @@ Backend запускается командой выше:
 `python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`.
 `GET http://127.0.0.1:8000/api/v1/health` проверяет только работу HTTP-приложения.
 
-Для ответов сначала подготовьте основной и табличный индексы по разделу «Поиск приложения» и запустите локальную Ollama с `qwen3.5:9b`. Пример PowerShell:
+Для ответов нужен опубликованный релиз корпуса (раздел «Публикация корпуса») и локальная Ollama с `qwen3.5:9b`. Пример PowerShell:
 
 ```powershell
 $body = @{ question = "Какие документы нужны для поступления?" } | ConvertTo-Json
@@ -73,6 +73,75 @@ Set-Location backend
 python -m pytest -q
 ruff check .
 ```
+
+### Публикация корпуса
+
+Приложение читает только `data/processed/release_state.json`. При создании сервиса
+оно проверяет указатель и закрепляет пути одного неизменяемого релиза. Модели
+загружаются при первом вопросе. После публикации или отката **перезапустите backend**:
+уже созданный сервис продолжает использовать прежний релиз. Отсутствующий или
+повреждённый указатель оставляет health доступным, но ответы возвращают безопасный
+503; автоматического возврата к старым каталогам нет.
+
+Однократное сохранение полностью подготовленного локального Task025-корпуса
+(без сети, пересборки индексов и генерации), из `backend/`:
+
+```powershell
+python -m app.corpus.cli bootstrap --release baseline-task025
+python -m app.corpus.cli list
+python -m app.corpus.cli show --release baseline-task025
+```
+
+Повторный bootstrap при существующем указателе запрещён. `data/source_manifest.json`
+остаётся reference/bootstrap-реестром; рабочий реестр — `registry.json` выбранного
+релиза. Старые команды ingestion/chunking/build-index предназначены для подготовки
+bootstrap или явно заданных диагностических каталогов и не изменяют сохранённые релизы.
+
+Входящий пакет `data/incoming/<package-id>/` содержит **только** `metadata.json` и
+`document.html` либо `document.pdf`. Метаданные: `schema_version: 1` и все поля
+версии реестра Task025, кроме `status`: `id`, `logical_document_id`, `version`,
+`title`, `url`, `source_type`, `category`, `admission_year`, `supersedes`,
+`published_at`, `effective_from`, `effective_to`, `processing`. Даты и `supersedes`
+могут быть `null`; `processing` содержит `table_aware`. Для замены нужны новый ID,
+активный `supersedes`, прежние logical ID/год и версия ровно +1. Новое семейство
+начинается с версии 1 без предшественника. Локальному документу присваивается
+`final_url = url`; URL должен быть официальным HTTPS-адресом.
+
+Пример операторского цикла с условными ID пакета и кандидата:
+
+```powershell
+python -m app.corpus.cli stage --release candidate-b --package ..\data\incoming\package-b
+# Несколько пакетов: повторите --package. Кандидат полностью пересобирает оба индекса.
+python -m app.corpus.cli validate --release candidate-b
+# Скопируйте точный validation_sha из успешной проверки:
+python -m app.corpus.cli publish --release candidate-b --expected-current baseline-task025 --validation-sha <SHA> --confirm candidate-b
+python -m app.corpus.cli rollback --release baseline-task025 --expected-current candidate-b --confirm baseline-task025
+```
+
+`validate` проверяет все сохранённые версии и выполняет 80 вопросов для основания и
+кандидата одной парой моделей. Исторические source/page-метки не переименовываются:
+их метрики диагностические, а успешные пять результатов для каждого вопроса обязательны.
+Пакеты нельзя менять или удалять до окончания validation; после публикации они runtime
+и откату не нужны. Изменение sealed-кандидата требует нового полного `validate`.
+
+`staging/<id>/` и `releases/<id>/` содержат собственные реестр, snapshots,
+нормализованные документы, активные чанки, оба индекса, `release.json` и `validation.json`.
+Инвентарь связывает файлы размерами и SHA-256; digest релиза и SHA validation защищают
+от незаметного изменения проверенного кандидата. Единственный атомарно заменяемый
+файл — указатель. Сбой до его замены сохраняет прежний выбор; сохранённый orphan
+можно повторно опубликовать с теми же подтверждениями. Generation основания защищает
+от устаревшей публикации после A → C → A. Откат сохраняет историю и новые релизы.
+
+Все изменяющие команды используют один `.corpus.lock`; существующий lock означает
+отказ, автоматического удаления нет. Для изолированной симуляции доступны
+`--processed-root` и `--incoming-root`. Пути, symlink/junction и имена Windows проверяются.
+Incoming и processed игнорируются Git. `list`, `audit`, `freshness` загрузчика теперь
+по умолчанию читают выбранный релиз; freshness сохраняет только отдельный отчёт.
+Явные пути включают отдельный legacy-режим: пропущенные пути получают прежние defaults,
+без смешивания с текущим релизом.
+
+Решение: [ADR 0008](docs/decisions/0008-immutable-corpus-releases-and-atomic-publication.md).
+Результаты: [Task026](docs/evaluation/0013-controlled-corpus-publication.md).
 
 ### Официальные источники HTML и PDF
 
@@ -164,19 +233,21 @@ python -m app.chunking.cli build --source-id admission-rules-pdf
 
 ### Поиск приложения
 
-Для сборки индекса нужны чанки **всех активных** источников. Из `backend/` выполните:
+Для первоначальной подготовки до bootstrap нужны чанки **всех активных** источников.
+При уже опубликованном корпусе обновления выполняются через `app.corpus`. Из `backend/`:
 
 ```powershell
 python -m app.ingestion.cli fetch
 python -m app.chunking.cli build
 python -m app.retrieval.cli build-index
 python -m app.retrieval.cli build-table-index
+python -m app.corpus.cli bootstrap --release baseline-task025
 python -m app.retrieval.cli retrieve "Какие вступительные испытания нужно сдавать?"
 ```
 
 Первая сборка загрузит модель `BAAI/bge-m3` из Hugging Face; для этого нужен доступ к сети и свободное место для кеша. GPU необязателен: `EMBEDDING_DEVICE=auto` использует CUDA при наличии, иначе CPU. В `.env` можно задать `EMBEDDING_MODEL`, `EMBEDDING_DEVICE` (`auto`, `cpu`, `cuda`) и `EMBEDDING_BATCH_SIZE` (1–128). CLI также принимает `--manifest`, `--chunks-dir`, `--index-dir`, `--device`, `--batch-size`; поиск ограничивает `--top-k` диапазоном 1–50.
 
-Основной индекс сохраняется в `data/processed/index/`, а отдельный индекс строк таблиц — в `data/processed/table_index/`. `build-table-index` работает офлайн относительно источников: читает сохранённые PDF из `originals/pdf/`, проверяет снимки и нормализованные документы до загрузки модели и использует прежний extractor `lines_strict`. При необходимости путь задаётся через `--originals-root`. Источники выбираются в порядке реестра по `status=active`, `source_type=pdf`, `processing.table_aware=true`, без фиксированного года. Сейчас это `admission-capacity-pdf`, `entrance-exams-list-pdf` и `tuition-order-128-pdf`. Индекс таблиц сверяется с версиями и хешами нормализованных PDF и основного индекса; устаревший, отсутствующий или повреждённый артефакт вызывает явную ошибку. Первичная загрузка моделей при отсутствии кеша остаётся отдельной сетевой потребностью.
+До bootstrap основной индекс сохраняется в `data/processed/index/`, а отдельный индекс строк таблиц — в `data/processed/table_index/`; runtime использует копии внутри выбранного релиза. `build-table-index` работает офлайн относительно источников: читает сохранённые PDF из `originals/pdf/`, проверяет снимки и нормализованные документы до загрузки модели и использует прежний extractor `lines_strict`. При необходимости путь задаётся через `--originals-root`. Источники выбираются в порядке реестра по `status=active`, `source_type=pdf`, `processing.table_aware=true`, без фиксированного года. Сейчас это `admission-capacity-pdf`, `entrance-exams-list-pdf` и `tuition-order-128-pdf`. Индекс таблиц сверяется с версиями и хешами нормализованных PDF и основного индекса; устаревший, отсутствующий или повреждённый артефакт вызывает явную ошибку. Первичная загрузка моделей при отсутствии кеша остаётся отдельной сетевой потребностью.
 
 Основной режим получает top‑20 из обычного индекса и top‑5 из индекса таблиц, ранжирует все 25 прежней моделью `BAAI/bge-reranker-v2-m3` и выбирает до пяти результатов, допуская не более двух с одной страницы PDF. Он повторно использует индексы и модели между запросами одного экземпляра. Результат содержит исходный `dense_score` и итоговый `rerank_score`.
 
@@ -285,7 +356,7 @@ npm run build
 
 ### End-to-end API smoke
 
-Для явной сквозной проверки подготовьте основной и табличный индексы (`build-index`, `build-table-index`), локальный кеш BGE-M3 и reranker, запустите Ollama с моделью `qwen3.5:9b`. Из `backend/`:
+Для явной сквозной проверки нужен опубликованный релиз, локальный кеш BGE-M3 и reranker, а также Ollama с моделью `qwen3.5:9b`. Preflight и приложение проверяют один выбранный корпус. Новые отчёты сохраняйте в отдельный каталог через `--output-dir`, не заменяя исторические. Из `backend/`:
 
 ```powershell
 python -m app.evaluation.api_smoke_cli run

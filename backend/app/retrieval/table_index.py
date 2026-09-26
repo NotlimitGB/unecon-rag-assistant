@@ -13,6 +13,7 @@ import faiss
 import pymupdf
 
 from app.chunking.core import validate_normalized_document
+from app.corpus.paths import protect_saved_release
 from app.ingestion.manifest import load_manifest
 from app.ingestion.models import active_sources
 from app.ingestion.snapshots import DEFAULT_ORIGINALS_ROOT, read_pair
@@ -124,6 +125,7 @@ def build_table_index(
         or not 1 <= batch_size <= 128
     ):
         raise RetrievalError("invalid embedding configuration")
+    protect_saved_release(table_dir)
     production, production_meta = _production(manifest_path, chunks_dir, production_dir, model_name)
     sources = _sources(manifest_path)
     originals = [_normalized(source, pdf_root) for source in sources]

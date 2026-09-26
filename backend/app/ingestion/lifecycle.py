@@ -10,6 +10,7 @@ from pathlib import Path
 
 import httpx
 
+from app.corpus.paths import protect_saved_release
 from app.ingestion.fetcher import fetch_html, fetch_pdf
 from app.ingestion.html import extract_html
 from app.ingestion.models import Manifest, active_sources
@@ -127,6 +128,7 @@ def freshness(
 
 def write_freshness_report(output_dir: Path, report: dict) -> Path:
     """The audit's only write: a report, independent of ingestion publication."""
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / "report.json"
     temporary = None

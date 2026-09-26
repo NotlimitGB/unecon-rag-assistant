@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.corpus.paths import protect_saved_release
 from app.evaluation.dataset import load_dataset, validate_page_labels
 from app.evaluation.metrics import rank_metrics
 from app.ingestion.manifest import load_manifest
@@ -184,6 +185,7 @@ def run_canonical_evaluation(
         "latency": latency,
         "questions": rows,
     }
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "canonical_retrieval.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

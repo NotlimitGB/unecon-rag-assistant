@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from app.corpus.paths import protect_saved_release
 from app.evaluation.metrics import grouped_primary_metrics, rank_metrics
 
 
@@ -164,6 +165,7 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 
 def write_reports(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "retrieval_report.json"
     md_path = output_dir / "retrieval_report.md"

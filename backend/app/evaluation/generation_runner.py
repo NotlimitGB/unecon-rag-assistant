@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
+from app.corpus.paths import protect_saved_release
 from app.generation.models import AnswerResponse
 from app.retrieval.service import RetrievalResponse
 
@@ -365,6 +366,7 @@ def summarize_manual_review(
 
 
 def write_generation_reports(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path, Path]:
+    protect_saved_release(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = (
         output_dir / "generation_report.json",
