@@ -12,7 +12,7 @@ export function QuestionForm({ draft, onChange, onSubmit, pending, ready, inputR
     <form ref={formRef} onSubmit={(event) => { event.preventDefault(); if (canSubmit) onSubmit() }}>
       <label htmlFor="question">Ваш вопрос</label>
       <div className={`composer ${tooLong ? 'composer--invalid' : ''}`}>
-        <textarea id="question" ref={inputRef} value={draft} rows={3}
+        <textarea id="question" ref={inputRef} value={draft} rows={2}
           placeholder="Например, какие документы нужны для поступления?"
           readOnly={pending} aria-invalid={tooLong}
           aria-describedby={`question-hint${count >= 1600 ? ' question-count' : ''}${tooLong ? ' question-error' : ''}`}

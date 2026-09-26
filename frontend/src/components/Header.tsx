@@ -1,9 +1,15 @@
-export function Header() {
-  return <header className="site-header">
-    <div className="header-rule" aria-hidden="true" />
+import type { RefObject } from 'react'
+
+export function Header({ titleRef, onClose }: {
+  titleRef: RefObject<HTMLHeadingElement | null>; onClose: () => void
+}) {
+  return <header className="widget-header">
     <div>
-      <h1>Помощник абитуриента СПбГЭУ</h1>
-      <p>Бакалавриат и специалитет <span aria-hidden="true">·</span> Приёмная кампания 2026</p>
+      <h2 id="widget-title" tabIndex={-1} ref={titleRef}>Помощник абитуриента</h2>
+      <p>Бакалавриат и специалитет · 2026</p>
     </div>
+    <button type="button" className="widget-close" aria-label="Закрыть помощника" onClick={onClose}>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+    </button>
   </header>
 }

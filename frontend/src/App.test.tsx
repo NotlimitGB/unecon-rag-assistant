@@ -12,6 +12,7 @@ function setup(response: () => Promise<Response> = async () => json(answer())) {
   const fetch = vi.fn((url: string) => url.endsWith('/health') ? Promise.resolve(json(health)) : response())
   vi.stubGlobal('fetch', fetch)
   const view = render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника абитуриента' }))
   return { fetch, ...view }
 }
 async function ready() {
@@ -27,12 +28,12 @@ describe('applicant interface', () => {
   it('shows scope, empty state and exact disclosure; examples only fill and focus', async () => {
     const { fetch } = setup()
     expect(send()).toBeDisabled()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Помощник абитуриента СПбГЭУ')
+    expect(screen.getByRole('dialog', { name: 'Помощник абитуриента' })).toBeInTheDocument()
     expect(screen.getByText(/Приёмная кампания 2026/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Задайте вопрос о поступлении' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Чем я могу помочь?' })).toBeInTheDocument()
     await ready()
     const examples = within(screen.getByLabelText('Примеры вопросов')).getAllByRole('button')
-    expect(examples).toHaveLength(4)
+    expect(examples).toHaveLength(3)
     for (const example of examples) {
       fireEvent.click(example)
       expect(input()).toHaveFocus()
@@ -65,7 +66,7 @@ describe('applicant interface', () => {
     payload.citations = [citation, { ...citation, source_title: 'Стоимость', source_url: 'https://unecon.ru/tuition/', source_type: 'html', page: null },
       { ...citation, page: 1 }, citation]
     setup(async () => json(payload)); await submit()
-    const links = await screen.findAllByRole('link')
+    const links = await within(screen.getByRole('dialog')).findAllByRole('link')
     expect(links).toHaveLength(2)
     expect(links[0]).toHaveTextContent('Правила приёма')
     expect(links[0]).toHaveTextContent('PDF · стр. 1, 2')
@@ -135,6 +136,7 @@ describe('applicant interface', () => {
   it('allows separate health retry with no automatic answer request', async () => {
     const fetch = vi.fn().mockRejectedValueOnce(new Error('PRIVATE')).mockResolvedValueOnce(json(health))
     vi.stubGlobal('fetch', fetch); render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника абитуриента' }))
     const retry = await screen.findByRole('button', { name: 'Повторить проверку' })
     write('Когда приём?'); expect(send()).toBeDisabled()
     fireEvent.click(retry); await ready(); expect(send()).toBeEnabled()
@@ -145,6 +147,7 @@ describe('applicant interface', () => {
     const fetch = vi.fn().mockReturnValueOnce(stale.promise).mockResolvedValueOnce(json(health))
     vi.stubGlobal('fetch', fetch)
     const { unmount } = render(<StrictMode><App /></StrictMode>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника абитуриента' }))
     await ready(); write('Когда приём?')
     expect(fetch.mock.calls[0][1].signal.aborted).toBe(true)
     await act(async () => stale.resolve(json({}, 503)))
