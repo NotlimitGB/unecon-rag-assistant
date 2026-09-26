@@ -1,26 +1,34 @@
-from typing import Literal
+from collections.abc import Callable
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
+from app.api.router import router
 from app.config import settings
+from app.generation.service import AnswerService
 
 
-class HealthResponse(BaseModel):
-    status: Literal["ok"]
-    service: Literal["unecon-rag-assistant"]
+def create_app(answer_service_factory: Callable[[], AnswerService] | None = None) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        service = (answer_service_factory or AnswerService)()
+        application.state.answer_service = service
+        try:
+            yield
+        finally:
+            service.close()
+
+    application = FastAPI(title=settings.app_name, lifespan=lifespan)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_origin],
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+        allow_credentials=False,
+    )
+    application.include_router(router)
+    return application
 
 
-app = FastAPI(title=settings.app_name)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
-    allow_methods=["GET"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/api/v1/health", response_model=HealthResponse)
-def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="unecon-rag-assistant")
+app = create_app()
