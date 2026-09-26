@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "generation_question_id": "gen-001",
+      "purpose": "Обычный PDF: сроки приёма",
+      "expected_status": "answered",
+      "acceptable_evidence": [
+        {
+          "source_id": "admission-deadlines-pdf",
+          "pages": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "generation_question_id": "gen-007",
+      "purpose": "Таблица мест",
+      "expected_status": "answered",
+      "acceptable_evidence": [
+        {
+          "source_id": "admission-capacity-pdf",
+          "pages": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "generation_question_id": "gen-019",
+      "purpose": "Первое вступительное испытание для Экономики",
+      "expected_status": "answered",
+      "acceptable_evidence": [
+        {
+          "source_id": "entrance-exams-list-pdf",
+          "pages": [
+            2
+          ]
+        },
+        {
+          "source_id": "admission-rules-pdf",
+          "pages": [
+            51,
+            52,
+            56
+          ]
+        }
+      ]
+    },
+    {
+      "generation_question_id": "gen-026",
+      "purpose": "HTML: контакты отдела",
+      "expected_status": "answered",
+      "acceptable_evidence": [
+        {
+          "source_id": "tuition"
+        }
+      ]
+    },
+    {
+      "generation_question_id": "gen-027",
+      "purpose": "Таблица стоимости обучения",
+      "expected_status": "answered",
+      "acceptable_evidence": [
+        {
+          "source_id": "tuition-order-128-pdf",
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "generation_question_id": "gen-049",
+      "purpose": "Персональный неподдерживаемый запрос",
+      "expected_status": "insufficient_evidence"
+    }
+  ]
+}

@@ -40,7 +40,7 @@ def load_datasets(dataset_path: Path, retrieval_path: Path) -> tuple[dict, dict]
     return generation, retrieval
 
 
-def check_baseline() -> None:
+def check_baseline(expected_prompt: str = "grounded-answer-v1") -> None:
     expected = {
         "generation_provider": "ollama",
         "ollama_model": "qwen3.5:9b",
@@ -51,7 +51,7 @@ def check_baseline() -> None:
     }
     if any(getattr(settings, key) != value for key, value in expected.items()):
         raise ValueError("Task009 baseline configuration differs from the accepted settings")
-    if PROMPT_VERSION != "grounded-answer-v1":
+    if PROMPT_VERSION != expected_prompt:
         raise ValueError("Task009 prompt version differs from accepted baseline")
 
 
@@ -80,7 +80,7 @@ def preflight_ollama() -> None:
 
 
 def run(dataset: dict, retrieval: dict, output_dir: Path) -> dict:
-    check_baseline()
+    check_baseline("grounded-answer-v2")
     preflight_corpus(retrieval)
     preflight_ollama()
     recording = RecordingRetrieval(RetrievalService(config=settings))

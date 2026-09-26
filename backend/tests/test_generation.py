@@ -220,7 +220,7 @@ def test_ollama_request_and_schema_with_mock_transport():
     assert payload["stream"] is False and payload["think"] is False
     assert payload["options"] == {"temperature": 0.1, "num_predict": 512}
     assert payload["messages"][0]["role"] == "system"
-    assert "grounded-answer-v1" in payload["messages"][0]["content"]
+    assert "grounded-answer-v2" in payload["messages"][0]["content"]
     assert payload["messages"][1]["role"] == "user"
     assert "Вопрос?" in payload["messages"][1]["content"]
     schema = payload["format"]
@@ -236,9 +236,9 @@ def test_ollama_request_and_schema_with_mock_transport():
     httpx.Response(200, text="not-json"),
     httpx.Response(200, json={}),
     httpx.Response(200, json={"message": {}}),
-    httpx.Response(200, json={"message": {"content": "bad-json"}}),
+    httpx.Response(200, json={"message": {"role": "assistant", "content": "bad-json"}}),
     httpx.Response(200, json={"message": {"role": "user", "content": "{}"}}),
-    httpx.Response(200, json={"message": {"content": json.dumps({
+    httpx.Response(200, json={"message": {"role": "assistant", "content": json.dumps({
         "status": "answered", "answer": "Ответ", "cited_context_ids": ["C1"], "extra": 1,
     })}}),
 ])
@@ -310,3 +310,64 @@ def test_cli_human_json_and_errors(monkeypatch, capsys):
     assert main(["answer", "fail", "--json"]) == 1
     captured = capsys.readouterr()
     assert captured.out == "" and "synthetic failure" in captured.err
+
+
+@pytest.mark.parametrize(
+    "status, phrase", [(404, "model.*or endpoint was not found"), (500, "HTTP 500")]
+)
+def test_provider_http_diagnostic(status, phrase):
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(status))
+    ) as client:
+        with pytest.raises(GenerationError, match=phrase):
+            OllamaGroundedGenerator(client=client).generate("question", [])
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        None,
+        [],
+        "wrong",
+        {"role": "assistant"},
+        {"role": "assistant", "content": None},
+        {"role": "assistant", "content": ""},
+        {"role": "assistant", "content": '{"status":"answered","answer":"x"}'},
+    ],
+)
+def test_provider_invalid_assistant_message(message):
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"message": message})
+        )
+    ) as client:
+        with pytest.raises(GenerationError):
+            OllamaGroundedGenerator(client=client).generate("question", [])
+
+
+def test_real_provider_service_http_failure_chain(caplog):
+    from fastapi.testclient import TestClient
+
+    from app.api.routes.answer import UNAVAILABLE_MESSAGE
+    from app.main import create_app
+
+    question = "private question"
+    context = "private citation context"
+    retrieval = FakeRetrieval(retrieved(question, [chunk(text=context)]))
+    calls = []
+
+    def fail(request):
+        calls.append(request)
+        raise httpx.ConnectError("private provider failure", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(fail)) as transport:
+        generator = OllamaGroundedGenerator(client=transport)
+        service = AnswerService(retrieval_service=retrieval, generator=generator)
+        with TestClient(create_app(lambda: service)) as client:
+            with caplog.at_level("ERROR", logger="app.api.routes.answer"):
+                response = client.post("/api/v1/answer", json={"question": question})
+    assert response.status_code == 503
+    assert response.json() == {"detail": UNAVAILABLE_MESSAGE}
+    assert retrieval.calls == [question] and len(calls) == 1
+    for private in (question, context, "private provider failure"):
+        assert private not in response.text and private not in caplog.text
